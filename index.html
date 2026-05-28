@@ -355,8 +355,10 @@
     startTimer();
   }
 
-  // 파일 목록 로드 (newPaths: 방금 업로드된 경로 목록 — 하이라이트용)
-  async function loadFiles(newPaths = []) {
+  // 파일 목록 로드
+  // newPaths: 방금 업로드된 스토리지 경로 배열 (하이라이트용)
+  // nameMap : Map<storagePath, 원본 파일명> — 방금 올린 파일의 원본명 복원용
+  async function loadFiles(newPaths = [], nameMap = new Map()) {
     const { data, error } = await sb.storage
       .from(BUCKET)
       .list('', { sortBy: { column: 'created_at', order: 'desc' } });
@@ -379,12 +381,11 @@
 
     files.forEach(file => {
       const item = document.createElement('div');
-      // 방금 올린 파일은 파란 하이라이트 애니메이션
       item.className = 'file-item' + (newSet.has(file.name) ? ' new-item' : '');
 
       const sizeStr = file.metadata?.size != null ? formatSize(file.metadata.size) : '';
-      // 표시 이름: 타임스탬프 접두사(숫자_) 제거
-      const displayName = file.name.replace(/^\d+_/, '');
+      // 원본명이 맵에 있으면 사용, 없으면 타임스탬프 접두사 제거
+      const displayName = nameMap.get(file.name) || file.name.replace(/^\d+_/, '');
 
       item.innerHTML = `
         <div class="file-meta">
@@ -427,10 +428,11 @@
   async function uploadFiles(files) {
     if (!files.length) return;
 
-    const resultEl    = document.getElementById('upload-result');
-    const labelEl     = document.getElementById('progress-label');
-    const total       = files.length;
+    const resultEl      = document.getElementById('upload-result');
+    const labelEl       = document.getElementById('progress-label');
+    const total         = files.length;
     const uploadedPaths = [];
+    const nameMap       = new Map(); // storagePath → 원본 파일명
 
     resultEl.innerHTML         = '';
     progressWrap.style.display = 'block';
@@ -455,6 +457,7 @@
         row.innerHTML = `<span class="ri">✕</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span><span style="margin-left:auto;font-size:11px;opacity:.7">${error.message}</span>`;
       } else {
         uploadedPaths.push(path);
+        nameMap.set(path, file.name); // 원본명 보존
         row.className = 'upload-result-item ok';
         row.innerHTML = `<span class="ri">✓</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>`;
       }
@@ -471,9 +474,8 @@
     }, 1200);
 
     fileInput.value = '';
-    await loadFiles(uploadedPaths);
+    await loadFiles(uploadedPaths, nameMap);
 
-    // 파일 리스트로 스크롤
     if (uploadedPaths.length > 0) {
       fileListEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
@@ -497,20 +499,14 @@
   }
 
   function toSafeStorageName(name) {
-    const idx = name.lastIndexOf('.');
-    const hasExt = idx > 0 && idx < name.length - 1;
-    const base = hasExt ? name.slice(0, idx) : name;
-    const ext = hasExt ? name.slice(idx + 1) : '';
-
-    const cleanedBase = base
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-
-    const fallbackBase = cleanedBase || 'file';
-    const cleanedExt = ext.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-    return cleanedExt ? `${fallbackBase}.${cleanedExt}` : fallbackBase;
+    // S3 키는 ASCII 안전 문자만 허용 — 비ASCII(한글 포함) 및 공백·예약문자를 _ 치환
+    const dotIdx = name.lastIndexOf('.');
+    const hasExt = dotIdx > 0 && dotIdx < name.length - 1;
+    const base   = hasExt ? name.slice(0, dotIdx) : name;
+    const ext    = hasExt ? name.slice(dotIdx + 1) : '';
+    const safeBase = base.replace(/[^a-zA-Z0-9\-_]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '') || 'file';
+    const safeExt  = ext.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    return safeExt ? `${safeBase}.${safeExt}` : safeBase;
   }
 
   let toastTimer = null;
