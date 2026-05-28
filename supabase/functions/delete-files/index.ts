@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const BUCKET = 'share_file'
 const CRON_SECRET_FALLBACK = 'sf_20260528_6a8f5f41f8c8447e9e3d3b7d'
+const DELETE_AFTER_MS = 10 * 60 * 1000
 
 Deno.serve(async (req: Request) => {
   // cron 호출 인증
@@ -27,9 +28,14 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: listError.message }), { status: 500 })
   }
 
-  const deletable = (files ?? []).filter(
-    f => f.name !== '.emptyFolderPlaceholder'
-  )
+  const now = Date.now()
+  const deletable = (files ?? []).filter((f) => {
+    if (f.name === '.emptyFolderPlaceholder') return false
+    if (!f.created_at) return false
+    const createdAt = new Date(f.created_at).getTime()
+    if (Number.isNaN(createdAt)) return false
+    return now - createdAt >= DELETE_AFTER_MS
+  })
 
   if (deletable.length === 0) {
     console.log('No files to delete.')
