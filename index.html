@@ -639,7 +639,7 @@
     dropZone.classList.remove('drag-over');
     uploadFiles(Array.from(e.dataTransfer.files));
   });
-
+  //
   // 파일 업로드 (순차 처리 + 진행 표시 + 결과 목록)
   async function uploadFiles(files) {
     if (!files.length) return;
