@@ -475,7 +475,7 @@
     <div class="file-list" id="file-list"></div>
   </div>
 
-  <div style="text-align:right;margin-top:20px;font-size:11px;color:#d0d0d0;letter-spacing:0.2px;">v1.3</div>
+  <div style="text-align:right;margin-top:20px;font-size:11px;color:#d0d0d0;letter-spacing:0.2px;">v1.2.1</div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -777,7 +777,7 @@
     a.click();
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
 
-    showToast('다운로드 완료 — 파일이 삭제되었습니다');
+    showToast('다운로드 완료 — 파일이 삭제되었습니다', 6000);
     await loadFiles(); // 삭제된 파일 목록에서 제거
   }
 
@@ -913,12 +913,12 @@
   }
 
   let toastTimer = null;
-  function showToast(msg) {
+  function showToast(msg, duration = 2800) {
     const el = document.getElementById('toast');
     el.textContent = msg;
     el.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+    toastTimer = setTimeout(() => el.classList.remove('show'), duration);
   }
 
   // ────────────────────────────────────────
