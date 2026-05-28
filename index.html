@@ -475,7 +475,7 @@
     <div class="file-list" id="file-list"></div>
   </div>
 
-  <div style="text-align:right;margin-top:20px;font-size:11px;color:#d0d0d0;letter-spacing:0.2px;">v1.2</div>
+  <div style="text-align:right;margin-top:20px;font-size:11px;color:#d0d0d0;letter-spacing:0.2px;">v1.3</div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -729,7 +729,8 @@
         <button class="btn-download">다운로드</button>
       `;
 
-      item.querySelector('.btn-download').addEventListener('click', () => downloadFile(file.name, displayName));
+      const dlBtn = item.querySelector('.btn-download');
+      dlBtn.addEventListener('click', () => downloadFile(file.name, displayName, dlBtn));
       fileListEl.appendChild(item);
     });
 
@@ -739,8 +740,11 @@
   // ────────────────────────────────────────
   // 다운로드
   // ────────────────────────────────────────
-  async function downloadFile(storageName, displayName) {
+  async function downloadFile(storageName, displayName, btnEl) {
     if (!isTokenValid(getToken())) { logout(); return; }
+
+    // 버튼 로딩 상태
+    if (btnEl) { btnEl.disabled = true; btnEl.textContent = '받는 중…'; }
 
     const params = new URLSearchParams({ path: storageName, name: displayName });
     let resp;
@@ -751,6 +755,7 @@
       });
     } catch {
       showToast('다운로드 실패: 네트워크 오류');
+      if (btnEl) { btnEl.disabled = false; btnEl.textContent = '다운로드'; }
       return;
     }
 
@@ -758,17 +763,22 @@
       let msg = '다운로드 실패';
       try { msg = (await resp.json()).error || msg; } catch {}
       showToast(msg);
+      if (btnEl) { btnEl.disabled = false; btnEl.textContent = '다운로드'; }
       return;
     }
 
-    // 서명 URL을 받아 브라우저가 Supabase에서 직접 다운로드
-    const { url } = await resp.json();
-    const a = document.createElement('a');
-    a.href = url;
+    // 파일 수신 후 즉시 저장 트리거
+    const blob = await resp.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = displayName;
     a.style.display = 'none';
     document.body.appendChild(a);
     a.click();
-    setTimeout(() => document.body.removeChild(a), 200);
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
+
+    showToast('다운로드 완료 — 파일이 삭제되었습니다');
+    await loadFiles(); // 삭제된 파일 목록에서 제거
   }
 
   // ────────────────────────────────────────

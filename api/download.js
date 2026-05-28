@@ -33,31 +33,48 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: '잘못된 경로입니다.' });
   }
 
-  // 다운로드 서명 URL 생성 (120초 유효)
-  const signResp = await fetch(
-    `${supabaseUrl}/storage/v1/object/sign/share_file/${encodeURIComponent(path)}`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${serviceKey}`,
-        apikey: serviceKey,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ expiresIn: 120 })
-    }
+  const h = { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey };
+
+  // Supabase에서 파일 가져오기
+  const fileResp = await fetch(
+    `${supabaseUrl}/storage/v1/object/share_file/${encodeURIComponent(path)}`,
+    { headers: h }
   );
 
-  if (!signResp.ok) {
-    return res.status(404).json({ error: '파일을 찾을 수 없습니다.' });
+  if (!fileResp.ok) {
+    // 404면 이미 다운로드되어 삭제된 것
+    const status = fileResp.status === 404 ? 404 : 500;
+    return res.status(status).json({
+      error: status === 404
+        ? '파일이 이미 다운로드되었거나 삭제되었습니다.'
+        : '파일을 가져오는 중 오류가 발생했습니다.'
+    });
   }
 
-  const { signedURL } = await signResp.json();
-  if (!signedURL) return res.status(404).json({ error: '파일을 찾을 수 없습니다.' });
-
+  const contentType = fileResp.headers.get('content-type') || 'application/octet-stream';
   const displayName = name || path;
-  // ?download=filename → Supabase가 Content-Disposition: attachment 헤더를 추가
-  const url = `${supabaseUrl}${signedURL}&download=${encodeURIComponent(displayName)}`;
+  const encoded     = encodeURIComponent(displayName);
 
+  // 파일 내용을 버퍼로 수신
+  const buffer = Buffer.from(await fileResp.arrayBuffer());
+
+  // 수신 즉시 Storage + 메타데이터 삭제 (브라우저 전송 전에 완료)
+  await Promise.all([
+    fetch(`${supabaseUrl}/storage/v1/object/share_file`, {
+      method: 'DELETE',
+      headers: { ...h, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefixes: [path] })
+    }),
+    fetch(`${supabaseUrl}/rest/v1/file_metadata?path=eq.${encodeURIComponent(path)}`, {
+      method: 'DELETE',
+      headers: h
+    })
+  ]);
+
+  // 삭제 완료 후 브라우저에 파일 전송
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encoded}`);
+  res.setHeader('Content-Length', buffer.length.toString());
   res.setHeader('Cache-Control', 'no-store');
-  return res.status(200).json({ url });
+  res.send(buffer);
 }
