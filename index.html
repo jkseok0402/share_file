@@ -244,6 +244,7 @@
   const progressBar  = document.getElementById('progress-bar');
 
   let timerInterval = null;
+  let isAuthChecking = false;
 
   async function loadRuntimeConfig() {
     try {
@@ -271,6 +272,7 @@
 
     // 인증 상태 감지
     sb.auth.onAuthStateChange(async (_event, session) => {
+      if (isAuthChecking) return;
       if (session) {
         await checkAuthUser(session.user);
       } else {
@@ -287,7 +289,17 @@
         email,
         password
       });
-      if (error) showToast('로그인 오류: ' + error.message);
+      if (error) {
+        showToast('로그인 오류: ' + error.message);
+        return;
+      }
+
+      const { data: userData, error: userError } = await sb.auth.getUser();
+      if (userError || !userData.user) {
+        showToast('사용자 정보를 확인할 수 없습니다.');
+        return;
+      }
+      await checkAuthUser(userData.user);
     });
 
     // 로그아웃
@@ -305,6 +317,7 @@
 
   // 허용 사용자 체크: auth.users에 존재하는 계정만 입장
   async function checkAuthUser(user) {
+    isAuthChecking = true;
     const { data, error } = await sb.rpc('is_allowed_auth_user', {
       p_user_id: user.id
     });
@@ -312,12 +325,14 @@
     if (error || data !== true) {
       await sb.auth.signOut();
       document.getElementById('access-denied').style.display = 'block';
-      showToast('허용되지 않은 사용자입니다.');
+      showToast(error ? `권한 확인 오류: ${error.message}` : '허용되지 않은 사용자입니다.');
+      isAuthChecking = false;
       return;
     }
 
     document.getElementById('access-denied').style.display = 'none';
     showMain(user);
+    isAuthChecking = false;
   }
 
   function showLogin() {
