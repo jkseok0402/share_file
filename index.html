@@ -396,6 +396,7 @@
   let uploadAllowed    = true;
   let sessionTimeout   = null;
   const SESSION_LIMIT_MS = 10 * 60 * 1000;
+  const localNameCache   = new Map(); // 업로드 시 세션 내 한글명 보존용 (path → original_name)
 
   async function loadRuntimeConfig() {
     try {
@@ -533,10 +534,11 @@
   // newPaths: 방금 업로드된 스토리지 경로 배열 (하이라이트용)
   async function loadFiles(newPaths = []) {
     // 스토리지 파일 목록 + DB 원본명 매핑을 병렬 조회
-    const [{ data, error }, { data: metaRows }] = await Promise.all([
+    const [{ data, error }, { data: metaRows, error: metaError }] = await Promise.all([
       sb.storage.from(BUCKET).list('', { sortBy: { column: 'created_at', order: 'desc' } }),
       sb.from('file_metadata').select('path, original_name')
     ]);
+    if (metaError) showToast('파일명 DB 조회 실패: ' + metaError.message);
 
     fileListEl.innerHTML = '';
 
@@ -575,7 +577,7 @@
       item.className = 'file-item' + (newSet.has(file.name) ? ' new-item' : '');
 
       const sizeStr     = file.metadata?.size != null ? formatSize(file.metadata.size) : '';
-      const displayName = nameMap.get(file.name) || file.name.replace(/^\d+_/, '');
+      const displayName = nameMap.get(file.name) || localNameCache.get(file.name) || file.name.replace(/^\d+_/, '');
       const expiresAt   = file.created_at
         ? new Date(file.created_at).getTime() + 10 * 60 * 1000
         : null;
@@ -674,10 +676,16 @@
         row.innerHTML = `<span class="ri">✕</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span><span style="margin-left:auto;font-size:11px;opacity:.7">${escapeHtml(error.message)}</span>`;
       } else {
         // 원본 파일명을 DB에 저장 (새로고침 후에도 한글명 유지)
-        await sb.from('file_metadata').insert({ path, original_name: file.name });
+        localNameCache.set(path, file.name);
+        const { error: metaError } = await sb.from('file_metadata').insert({ path, original_name: file.name });
         uploadedPaths.push(path);
         row.className = 'upload-result-item ok';
-        row.innerHTML = `<span class="ri">✓</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>`;
+        if (metaError) {
+          row.innerHTML = `<span class="ri">⚠</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span><span style="margin-left:auto;font-size:11px;opacity:.7">파일명 저장 실패</span>`;
+          showToast('파일명 DB 저장 실패: ' + metaError.message);
+        } else {
+          row.innerHTML = `<span class="ri">✓</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>`;
+        }
       }
       resultEl.appendChild(row);
 
