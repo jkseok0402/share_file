@@ -535,12 +535,32 @@
     startFileCountdowns();
   }
 
-  // 파일 다운로드 (displayName: 타임스탬프 없는 원본 이름)
+  // 파일 다운로드 — Vercel 프록시를 통해 서버 측 IP 검증 후 전달
   async function downloadFile(storageName, displayName) {
-    const { data, error } = await sb.storage.from(BUCKET).download(storageName);
-    if (error) { showToast('다운로드 실패: ' + error.message); return; }
-    const url = URL.createObjectURL(data);
-    const a   = document.createElement('a');
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { showToast('로그인이 필요합니다.'); return; }
+
+    const params = new URLSearchParams({ path: storageName, name: displayName });
+    let resp;
+    try {
+      resp = await fetch(`/api/download?${params}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+    } catch (_e) {
+      showToast('다운로드 실패: 네트워크 오류');
+      return;
+    }
+
+    if (!resp.ok) {
+      let msg = '다운로드 실패';
+      try { const j = await resp.json(); msg = j.error || msg; } catch (_) {}
+      showToast(msg);
+      return;
+    }
+
+    const blob = await resp.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
     a.href     = url;
     a.download = displayName;
     a.click();
