@@ -1,11 +1,15 @@
 export default function handler(req, res) {
-  const allowedIps = (process.env.ALLOWED_IPS || '')
-    .split(',')
-    .map(ip => ip.trim())
-    .filter(Boolean);
+  const rawAllowedIps = process.env.ALLOWED_IPS || '';
 
-  const forwarded = req.headers['x-forwarded-for'] || '';
-  const clientIp  = forwarded.split(',')[0].trim() || req.socket?.remoteAddress || '';
+  // * 이면 IP 제한 없이 업로드/다운로드 모두 허용
+  if (rawAllowedIps.trim() === '*') {
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ uploadAllowed: true, downloadAllowed: true });
+  }
+
+  const allowedIps = rawAllowedIps.split(',').map(ip => ip.trim()).filter(Boolean);
+  const forwarded  = req.headers['x-forwarded-for'] || '';
+  const clientIp   = forwarded.split(',')[0].trim() || req.socket?.remoteAddress || '';
 
   const isAllowedIp = allowedIps.length > 0 && allowedIps.includes(clientIp);
 

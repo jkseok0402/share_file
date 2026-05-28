@@ -1,15 +1,14 @@
 export default async function handler(req, res) {
-  // IP 허용 목록 검사
-  const allowedIps = (process.env.ALLOWED_IPS || '')
-    .split(',')
-    .map(ip => ip.trim())
-    .filter(Boolean);
-
-  if (allowedIps.length > 0) {
-    const forwarded = req.headers['x-forwarded-for'] || '';
-    const clientIp  = forwarded.split(',')[0].trim() || req.socket?.remoteAddress || '';
-    if (!allowedIps.includes(clientIp)) {
-      return res.status(403).json({ error: '접근이 허용되지 않은 IP입니다.' });
+  // IP 허용 목록 검사 (* 이면 제한 없음)
+  const rawAllowedIps = process.env.ALLOWED_IPS || '';
+  if (rawAllowedIps.trim() !== '*') {
+    const allowedIps = rawAllowedIps.split(',').map(ip => ip.trim()).filter(Boolean);
+    if (allowedIps.length > 0) {
+      const forwarded = req.headers['x-forwarded-for'] || '';
+      const clientIp  = forwarded.split(',')[0].trim() || req.socket?.remoteAddress || '';
+      if (!allowedIps.includes(clientIp)) {
+        return res.status(403).json({ error: '접근이 허용되지 않은 IP입니다.' });
+      }
     }
   }
 
