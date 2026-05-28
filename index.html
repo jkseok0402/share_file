@@ -392,6 +392,9 @@
 
   let timerInterval    = null;
   let countdownInterval = null;
+  let uploadAllowed    = true;
+  let sessionTimeout   = null;
+  const SESSION_LIMIT_MS = 10 * 60 * 1000;
 
   async function loadRuntimeConfig() {
     try {
@@ -417,9 +420,19 @@
     // 인증 상태 감지
     sb.auth.onAuthStateChange(async (_event, session) => {
       if (session) {
+        if (!sessionStorage.getItem('loginTime')) {
+          sessionStorage.setItem('loginTime', Date.now().toString());
+        }
+        if (isSessionExpired()) {
+          await sb.auth.signOut();
+          return;
+        }
+        scheduleAutoLogout();
         document.getElementById('access-denied').style.display = 'none';
         showMain(session.user);
       } else {
+        clearTimeout(sessionTimeout);
+        sessionStorage.removeItem('loginTime');
         showLogin();
       }
     });
@@ -446,11 +459,35 @@
 
     const { data } = await sb.auth.getSession();
     if (data.session) {
-      document.getElementById('access-denied').style.display = 'none';
-      showMain(data.session.user);
+      if (!sessionStorage.getItem('loginTime')) {
+        sessionStorage.setItem('loginTime', Date.now().toString());
+      }
+      if (isSessionExpired()) {
+        await sb.auth.signOut();
+      } else {
+        scheduleAutoLogout();
+        document.getElementById('access-denied').style.display = 'none';
+        showMain(data.session.user);
+      }
     } else {
       showLogin();
     }
+  }
+
+  function isSessionExpired() {
+    const loginTime = parseInt(sessionStorage.getItem('loginTime') || '0');
+    return loginTime > 0 && Date.now() - loginTime >= SESSION_LIMIT_MS;
+  }
+
+  function scheduleAutoLogout() {
+    clearTimeout(sessionTimeout);
+    const loginTime = parseInt(sessionStorage.getItem('loginTime') || '0');
+    if (!loginTime) return;
+    const remaining = loginTime + SESSION_LIMIT_MS - Date.now();
+    sessionTimeout = setTimeout(async () => {
+      showToast('세션이 만료되었습니다. 다시 로그인해 주세요.');
+      await sb.auth.signOut();
+    }, remaining);
   }
 
   function showLogin() {
@@ -460,12 +497,35 @@
     mainView.style.display  = 'none';
   }
 
-  function showMain(user) {
+  async function showMain(user) {
     loginView.style.display = 'none';
     mainView.style.display  = 'block';
     userEmailEl.textContent = user.email;
+    await applyIpPermissions();
     loadFiles();
     startTimer();
+  }
+
+  async function applyIpPermissions() {
+    try {
+      const res = await fetch('/api/check-ip', { cache: 'no-store' });
+      if (res.ok) {
+        const perm = await res.json();
+        uploadAllowed = perm.uploadAllowed !== false;
+      }
+    } catch (_) {}
+
+    if (!uploadAllowed) {
+      dropZone.style.pointerEvents = 'none';
+      dropZone.style.opacity       = '0.4';
+      dropZone.style.cursor        = 'not-allowed';
+      dropZone.querySelector('span').textContent = '이 IP에서는 업로드가 허용되지 않습니다';
+    } else {
+      dropZone.style.pointerEvents = '';
+      dropZone.style.opacity       = '';
+      dropZone.style.cursor        = '';
+      dropZone.querySelector('span').textContent = '파일을 여기에 끌어다 놓거나 클릭하여 업로드';
+    }
   }
 
   // 파일 목록 로드
@@ -582,6 +642,7 @@
   // 파일 업로드 (순차 처리 + 진행 표시 + 결과 목록)
   async function uploadFiles(files) {
     if (!files.length) return;
+    if (!uploadAllowed) { showToast('이 IP에서는 업로드가 허용되지 않습니다.'); return; }
 
     const resultEl      = document.getElementById('upload-result');
     const labelEl       = document.getElementById('progress-label');
