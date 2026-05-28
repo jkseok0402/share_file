@@ -1,3 +1,5 @@
+import { verifyToken } from './_auth.js';
+
 export default async function handler(req, res) {
   // IP 허용 목록 검사 (* 이면 제한 없음)
   const rawAllowedIps = process.env.ALLOWED_IPS || '';
@@ -13,10 +15,8 @@ export default async function handler(req, res) {
     }
   }
 
-  // JWT 검증
-  const authHeader = req.headers['authorization'] || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  if (!token) {
+  // 세션 토큰 검증
+  if (!verifyToken(req.headers['authorization'])) {
     return res.status(401).json({ error: '인증이 필요합니다.' });
   }
 
@@ -24,14 +24,6 @@ export default async function handler(req, res) {
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) {
     return res.status(500).json({ error: '서버 환경변수가 설정되지 않았습니다.' });
-  }
-
-  // 사용자 JWT 유효성 확인
-  const userResp = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    headers: { Authorization: `Bearer ${token}`, apikey: process.env.SUPABASE_ANON_KEY || '' }
-  });
-  if (!userResp.ok) {
-    return res.status(401).json({ error: '유효하지 않은 인증 토큰입니다.' });
   }
 
   const { path, name } = req.query;
@@ -44,7 +36,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: '잘못된 경로입니다.' });
   }
 
-  // Supabase Storage에서 파일 가져오기 (service role key 사용)
   const storageUrl = `${supabaseUrl}/storage/v1/object/${encodeURIComponent('share_file')}/${encodeURIComponent(path)}`;
   const fileResp   = await fetch(storageUrl, {
     headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey }

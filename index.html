@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Share File</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     @font-face {
       font-family: 'Paperlogy';
@@ -44,11 +43,60 @@
       font-size: 13px;
       color: #999;
       margin-top: 8px;
-      margin-bottom: 28px;
       line-height: 1.6;
     }
 
-    /* 버튼 공통 */
+    /* ── PIN 입력 ── */
+    .pin-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 28px 0 8px;
+    }
+
+    .pin-row {
+      display: flex;
+      gap: 14px;
+    }
+
+    .pin-box {
+      width: 62px;
+      height: 68px;
+      border: 2px solid #e8e8e8;
+      border-radius: 14px;
+      text-align: center;
+      font-size: 28px;
+      font-family: monospace;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+      color: #222;
+      caret-color: transparent;
+      background: #fafafa;
+    }
+    .pin-box:focus {
+      border-color: #111;
+      box-shadow: 0 0 0 3px rgba(17,17,17,0.08);
+      background: white;
+    }
+    .pin-box.filled { border-color: #555; background: white; }
+    .pin-box.shake  { animation: pinShake 0.35s ease-out; }
+
+    @keyframes pinShake {
+      0%,100% { transform: translateX(0); }
+      20%     { transform: translateX(-6px); }
+      60%     { transform: translateX(6px); }
+      80%     { transform: translateX(-3px); }
+    }
+
+    .pin-error {
+      margin-top: 16px;
+      font-size: 13px;
+      color: #b91c1c;
+      min-height: 18px;
+      text-align: center;
+    }
+
+    /* ── 버튼 공통 ── */
     .btn {
       display: inline-flex;
       align-items: center;
@@ -63,11 +111,10 @@
       cursor: pointer;
       transition: all 0.15s;
     }
-    .btn:hover { opacity: 0.85; transform: translateY(-1px); }
-    .btn:active { transform: translateY(0); }
+    .btn:hover   { opacity: 0.85; transform: translateY(-1px); }
+    .btn:active  { transform: translateY(0); }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
-    .btn-primary { background: #111; color: white; width: 100%; }
     .btn-logout {
       background: #f4f4f4;
       color: #555;
@@ -76,25 +123,7 @@
       border-radius: 8px;
     }
 
-    .login-form { display: flex; flex-direction: column; gap: 10px; }
-    .input {
-      width: 100%;
-      border: 1.5px solid #e8e8e8;
-      border-radius: 10px;
-      padding: 11px 14px;
-      font-family: 'Paperlogy', sans-serif;
-      font-size: 14px;
-      outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s;
-      color: #222;
-    }
-    .input::placeholder { color: #bbb; }
-    .input:focus {
-      border-color: #111;
-      box-shadow: 0 0 0 3px rgba(17,17,17,0.07);
-    }
-
-    /* 헤더 */
+    /* ── 헤더 ── */
     .header {
       display: flex;
       align-items: center;
@@ -102,16 +131,7 @@
       margin-bottom: 16px;
     }
 
-    .user-email {
-      font-size: 12px;
-      color: #999;
-      max-width: 180px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    /* 타이머 */
+    /* ── 타이머 ── */
     .timer {
       display: flex;
       align-items: center;
@@ -125,7 +145,7 @@
       margin-bottom: 14px;
     }
 
-    /* 업로드 영역 */
+    /* ── 업로드 영역 ── */
     .upload-area {
       border: 2px dashed #e0e0e0;
       border-radius: 14px;
@@ -151,7 +171,7 @@
     .upload-area:hover .upload-icon,
     .upload-area.drag-over .upload-icon { color: #4f8ef7; }
 
-    /* 업로드 진행 */
+    /* ── 진행바 ── */
     .progress-bar-wrap {
       background: #f0f0f0;
       border-radius: 99px;
@@ -174,7 +194,7 @@
       display: none;
     }
 
-    /* 업로드 결과 */
+    /* ── 업로드 결과 ── */
     .upload-result {
       display: flex;
       flex-direction: column;
@@ -194,7 +214,7 @@
     .upload-result-item .ri { font-size: 14px; flex-shrink: 0; }
     .upload-result-item .rn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    /* 파일 목록 */
+    /* ── 파일 목록 ── */
     .file-list-header {
       display: flex;
       align-items: center;
@@ -254,7 +274,7 @@
       min-width: 64px;
       transition: color 0.3s;
     }
-    .file-expires.warn  { color: #f59e0b; }
+    .file-expires.warn   { color: #f59e0b; }
     .file-expires.urgent { color: #ef4444; font-weight: 600; }
 
     .btn-download {
@@ -270,11 +290,7 @@
       cursor: pointer;
       transition: all 0.12s;
     }
-    .btn-download:hover {
-      border-color: #111;
-      color: #111;
-      background: white;
-    }
+    .btn-download:hover { border-color: #111; color: #111; background: white; }
 
     .empty {
       text-align: center;
@@ -287,6 +303,7 @@
       gap: 10px;
     }
 
+    /* ── 토스트 ── */
     .toast {
       position: fixed;
       bottom: 28px;
@@ -308,10 +325,7 @@
 
     /* ── 모바일 반응형 ── */
     @media (max-width: 560px) {
-      body {
-        align-items: flex-start;
-        padding: 16px;
-      }
+      body { align-items: flex-start; padding: 16px; }
 
       .container {
         width: 100%;
@@ -320,15 +334,11 @@
         box-shadow: 0 4px 16px rgba(0,0,0,0.07);
       }
 
-      /* iOS 입력창 자동 확대 방지 */
-      .input { font-size: 16px; }
+      .pin-box { width: 54px; height: 60px; font-size: 24px; }
+      .pin-row { gap: 10px; }
 
       .upload-area { padding: 24px 12px; }
-
-      /* 파일명 고정폭 해제 → 부모 너비에 맞춤 */
       .file-name { max-width: 100%; }
-
-      /* 파일 아이템: 삭제 카운트다운을 두 번째 줄로 */
       .file-item { flex-wrap: wrap; }
       .file-meta { width: 100%; }
       .file-expires {
@@ -339,34 +349,31 @@
         font-size: 10px;
       }
       .btn-download { order: 2; }
-
-      /* 토스트 긴 메시지 줄바꿈 */
       .toast {
         white-space: normal;
         max-width: calc(100vw - 48px);
         text-align: center;
         bottom: 16px;
       }
-
-      /* 헤더 이메일 축소 */
-      .user-email { max-width: 120px; }
     }
   </style>
 </head>
 <body>
 
 <div class="container">
+
   <!-- 로그인 화면 -->
   <div id="login-view">
     <h1>Share File</h1>
-    <p class="subtitle">등록된 계정으로 로그인 후 파일을 공유하세요.<br>업로드된 파일은 10분 이후 자동 삭제됩니다. (최대 20분)</p>
-    <form id="login-form" class="login-form">
-      <input class="input" id="email-input" type="email" placeholder="이메일" autocomplete="email" required>
-      <input class="input" id="password-input" type="password" placeholder="비밀번호" autocomplete="current-password" required>
-      <button class="btn btn-primary" id="login-btn" type="submit">로그인</button>
-    </form>
-    <div id="access-denied" style="display:none;margin-top:16px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;font-size:13px;color:#b91c1c;">
-      접근 권한이 없습니다. 관리자에게 이메일 등록을 요청하세요.
+    <p class="subtitle">4자리 PIN을 입력하세요</p>
+    <div class="pin-area">
+      <div class="pin-row">
+        <input class="pin-box" type="password" maxlength="1" inputmode="numeric" autocomplete="off">
+        <input class="pin-box" type="password" maxlength="1" inputmode="numeric" autocomplete="off">
+        <input class="pin-box" type="password" maxlength="1" inputmode="numeric" autocomplete="off">
+        <input class="pin-box" type="password" maxlength="1" inputmode="numeric" autocomplete="off">
+      </div>
+      <p class="pin-error" id="pin-error"></p>
     </div>
   </div>
 
@@ -374,10 +381,7 @@
   <div id="main-view" style="display:none;">
     <div class="header">
       <h1>Share File</h1>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span class="user-email" id="user-email"></span>
-        <button class="btn btn-logout" id="logout-btn">로그아웃</button>
-      </div>
+      <button class="btn btn-logout" id="logout-btn">로그아웃</button>
     </div>
 
     <div class="timer" id="timer-display">
@@ -410,150 +414,178 @@
     </div>
     <div class="file-list" id="file-list"></div>
   </div>
-  <div style="text-align:right;margin-top:20px;font-size:11px;color:#d0d0d0;letter-spacing:0.2px;">v1.1</div>
+
+  <div style="text-align:right;margin-top:20px;font-size:11px;color:#d0d0d0;letter-spacing:0.2px;">v1.2</div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-  // =============================================
-  // 설정: Supabase 프로젝트 정보를 입력하세요
-  // =============================================
-  const FALLBACK_SUPABASE_URL = 'https://vixxkcxympkvaorvsjtx.supabase.co';
-  const FALLBACK_SUPABASE_ANON_KEY = 'sb_publishable_QKhLfWgccjCteKJNTChPJQ_R2AD6uef';
-  const BUCKET = 'share_file';
-  // =============================================
+  // ────────────────────────────────────────
+  // 토큰 관리 (localStorage, 8시간 만료)
+  // ────────────────────────────────────────
+  const TOKEN_KEY = 'sf_token';
 
-  const { createClient } = supabase;
-  let sb = null;
+  function getToken()       { return localStorage.getItem(TOKEN_KEY); }
+  function saveToken(t)     { localStorage.setItem(TOKEN_KEY, t); }
+  function clearToken()     { localStorage.removeItem(TOKEN_KEY); }
 
-  const loginView   = document.getElementById('login-view');
-  const mainView    = document.getElementById('main-view');
-  const userEmailEl = document.getElementById('user-email');
-  const fileListEl  = document.getElementById('file-list');
-  const dropZone    = document.getElementById('drop-zone');
-  const fileInput   = document.getElementById('file-input');
-  const timerEl     = document.getElementById('timer-display');
+  function isTokenValid(t) {
+    if (!t) return false;
+    try {
+      const seg = t.split('.')[0];
+      let s = seg.replace(/-/g, '+').replace(/_/g, '/');
+      const rem = s.length % 4;
+      if (rem) s += '='.repeat(4 - rem);
+      const { exp } = JSON.parse(atob(s));
+      return typeof exp === 'number' && Date.now() < exp;
+    } catch { return false; }
+  }
+
+  // ────────────────────────────────────────
+  // API 헬퍼
+  // ────────────────────────────────────────
+  async function callApi(path, method = 'GET', body = null) {
+    const opts = {
+      method,
+      cache: 'no-store',
+      headers: { Authorization: `Bearer ${getToken() ?? ''}` }
+    };
+    if (body !== null) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+    return fetch(path, opts);
+  }
+
+  // ────────────────────────────────────────
+  // DOM
+  // ────────────────────────────────────────
+  const loginView    = document.getElementById('login-view');
+  const mainView     = document.getElementById('main-view');
+  const fileListEl   = document.getElementById('file-list');
+  const dropZone     = document.getElementById('drop-zone');
+  const fileInput    = document.getElementById('file-input');
   const progressWrap = document.getElementById('progress-wrap');
   const progressBar  = document.getElementById('progress-bar');
+  const pinBoxes     = Array.from(document.querySelectorAll('.pin-box'));
 
-  let timerInterval    = null;
   let countdownInterval = null;
-  let uploadAllowed    = true;
-  let sessionTimeout   = null;
-  const SESSION_LIMIT_MS = 10 * 60 * 1000;
-  const localNameCache   = new Map(); // 업로드 시 세션 내 한글명 보존용 (path → original_name)
+  let uploadAllowed     = true;
+  const localNameCache  = new Map();
 
-  async function loadRuntimeConfig() {
-    try {
-      const res = await fetch('/api/config', { cache: 'no-store' });
-      if (!res.ok) throw new Error('환경설정 응답 실패');
-      const cfg = await res.json();
-      if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
-        throw new Error('환경변수 누락');
-      }
-      return cfg;
-    } catch (_e) {
-      return {
-        supabaseUrl: FALLBACK_SUPABASE_URL,
-        supabaseAnonKey: FALLBACK_SUPABASE_ANON_KEY
-      };
-    }
-  }
-
-  async function initApp() {
-    const cfg = await loadRuntimeConfig();
-    sb = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
-
-    // 인증 상태 감지
-    sb.auth.onAuthStateChange(async (_event, session) => {
-      if (session) {
-        if (!sessionStorage.getItem('loginTime')) {
-          sessionStorage.setItem('loginTime', Date.now().toString());
+  // ────────────────────────────────────────
+  // PIN 입력 처리
+  // ────────────────────────────────────────
+  pinBoxes.forEach((box, i) => {
+    box.addEventListener('keydown', e => {
+      if (e.key === 'Backspace') {
+        e.preventDefault();
+        if (box.value) {
+          box.value = '';
+          box.classList.remove('filled');
+        } else if (i > 0) {
+          pinBoxes[i - 1].value = '';
+          pinBoxes[i - 1].classList.remove('filled');
+          pinBoxes[i - 1].focus();
         }
-        if (isSessionExpired()) {
-          await sb.auth.signOut();
-          return;
-        }
-        scheduleAutoLogout();
-        document.getElementById('access-denied').style.display = 'none';
-        showMain(session.user);
-      } else {
-        clearTimeout(sessionTimeout);
-        sessionStorage.removeItem('loginTime');
-        showLogin();
+      } else if (e.key === 'Enter') {
+        submitPin();
       }
     });
 
-    // 로그인 (이메일/비밀번호)
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
+    box.addEventListener('input', () => {
+      const val = box.value.replace(/\D/g, '');
+      box.value = val ? val.slice(-1) : '';
+      if (box.value) {
+        box.classList.add('filled');
+        if (i < 3) pinBoxes[i + 1].focus();
+        else submitPin();
+      } else {
+        box.classList.remove('filled');
+      }
+    });
+
+    box.addEventListener('paste', e => {
       e.preventDefault();
-      const email = document.getElementById('email-input').value.trim();
-      const password = document.getElementById('password-input').value;
-      const { error } = await sb.auth.signInWithPassword({
-        email,
-        password
+      const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+      [...text.slice(0, 4)].forEach((ch, j) => {
+        const target = pinBoxes[i + j];
+        if (!target) return;
+        target.value = ch;
+        target.classList.add('filled');
       });
-      if (error) {
-        showToast('로그인 오류: ' + error.message);
-        return;
-      }
+      const next = Math.min(i + text.length, 3);
+      pinBoxes[next].focus();
+      if (i + text.length >= 4) setTimeout(submitPin, 50);
     });
+  });
 
-    // 로그아웃
-    document.getElementById('logout-btn').addEventListener('click', async () => {
-      await sb.auth.signOut();
-    });
+  function getPinValue()  { return pinBoxes.map(b => b.value).join(''); }
 
-    const { data } = await sb.auth.getSession();
-    if (data.session) {
-      if (!sessionStorage.getItem('loginTime')) {
-        sessionStorage.setItem('loginTime', Date.now().toString());
-      }
-      if (isSessionExpired()) {
-        await sb.auth.signOut();
+  function resetPinBoxes() {
+    pinBoxes.forEach(b => { b.value = ''; b.disabled = false; b.classList.remove('filled', 'shake'); });
+    pinBoxes[0].focus();
+  }
+
+  async function submitPin() {
+    const pin = getPinValue();
+    if (pin.length < 4) return;
+
+    const errorEl = document.getElementById('pin-error');
+    errorEl.textContent = '';
+    pinBoxes.forEach(b => b.disabled = true);
+
+    try {
+      const resp = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ pin })
+      });
+      if (resp.ok) {
+        const { token } = await resp.json();
+        saveToken(token);
+        showMain();
       } else {
-        scheduleAutoLogout();
-        document.getElementById('access-denied').style.display = 'none';
-        showMain(data.session.user);
+        errorEl.textContent = 'PIN이 올바르지 않습니다.';
+        pinBoxes.forEach(b => b.classList.add('shake'));
+        setTimeout(resetPinBoxes, 350);
       }
-    } else {
-      showLogin();
+    } catch {
+      errorEl.textContent = '네트워크 오류가 발생했습니다.';
+      pinBoxes.forEach(b => b.disabled = false);
     }
   }
 
-  function isSessionExpired() {
-    const loginTime = parseInt(sessionStorage.getItem('loginTime') || '0');
-    return loginTime > 0 && Date.now() - loginTime >= SESSION_LIMIT_MS;
-  }
-
-  function scheduleAutoLogout() {
-    clearTimeout(sessionTimeout);
-    const loginTime = parseInt(sessionStorage.getItem('loginTime') || '0');
-    if (!loginTime) return;
-    const remaining = loginTime + SESSION_LIMIT_MS - Date.now();
-    sessionTimeout = setTimeout(async () => {
-      showToast('세션이 만료되었습니다. 다시 로그인해 주세요.');
-      await sb.auth.signOut();
-    }, remaining);
-  }
-
+  // ────────────────────────────────────────
+  // 화면 전환
+  // ────────────────────────────────────────
   function showLogin() {
-    clearInterval(timerInterval);
     clearInterval(countdownInterval);
     loginView.style.display = 'block';
     mainView.style.display  = 'none';
+    document.getElementById('pin-error').textContent = '';
+    setTimeout(resetPinBoxes, 80);
   }
 
-  async function showMain(user) {
+  async function showMain() {
     loginView.style.display = 'none';
     mainView.style.display  = 'block';
-    userEmailEl.textContent = user.email;
     await applyIpPermissions();
     loadFiles();
-    startTimer();
   }
 
+  function logout() {
+    clearToken();
+    showLogin();
+  }
+
+  document.getElementById('logout-btn').addEventListener('click', logout);
+
+  // ────────────────────────────────────────
+  // IP 권한 체크
+  // ────────────────────────────────────────
   async function applyIpPermissions() {
     try {
       const res = await fetch('/api/check-ip', { cache: 'no-store' });
@@ -561,7 +593,7 @@
         const perm = await res.json();
         uploadAllowed = perm.uploadAllowed !== false;
       }
-    } catch (_) {}
+    } catch {}
 
     if (!uploadAllowed) {
       dropZone.style.pointerEvents = 'none';
@@ -576,31 +608,27 @@
     }
   }
 
-  // 파일 목록 로드
-  // newPaths: 방금 업로드된 스토리지 경로 배열 (하이라이트용)
+  // ────────────────────────────────────────
+  // 파일 목록
+  // ────────────────────────────────────────
   async function loadFiles(newPaths = []) {
-    // 스토리지 파일 목록 + DB 원본명 매핑을 병렬 조회
-    const [{ data, error }, { data: metaRows, error: metaError }] = await Promise.all([
-      sb.storage.from(BUCKET).list('', { sortBy: { column: 'created_at', order: 'desc' } }),
-      sb.from('file_metadata').select('path, original_name')
-    ]);
-    if (metaError) showToast('파일명 DB 조회 실패: ' + metaError.message);
-
+    const resp = await callApi('/api/files');
     fileListEl.innerHTML = '';
 
-    if (error) {
+    if (resp.status === 401) { logout(); return; }
+    if (!resp.ok) {
       fileListEl.innerHTML = `<div class="empty">목록을 불러오지 못했습니다</div>`;
       return;
     }
 
-    // path → 원본 파일명 맵
-    const nameMap = new Map((metaRows || []).map(r => [r.path, r.original_name]));
-    const files   = (data || []).filter(f => f.name !== '.emptyFolderPlaceholder');
+    const { files, metadata } = await resp.json();
+    const nameMap  = new Map((metadata || []).map(r => [r.path, r.original_name]));
+    const filtered = (files || []).filter(f => f.name !== '.emptyFolderPlaceholder');
 
     const headerEl = document.getElementById('file-list-header');
     const countEl  = document.getElementById('file-count');
 
-    if (files.length === 0) {
+    if (filtered.length === 0) {
       headerEl.style.display = 'none';
       fileListEl.innerHTML = `
         <div class="empty">
@@ -614,11 +642,10 @@
     }
 
     headerEl.style.display = 'flex';
-    countEl.textContent = `${files.length}개`;
-
+    countEl.textContent = `${filtered.length}개`;
     const newSet = new Set(newPaths);
 
-    files.forEach(file => {
+    filtered.forEach(file => {
       const item = document.createElement('div');
       item.className = 'file-item' + (newSet.has(file.name) ? ' new-item' : '');
 
@@ -644,25 +671,26 @@
     startFileCountdowns();
   }
 
-  // 파일 다운로드 — Vercel 프록시를 통해 서버 측 IP 검증 후 전달
+  // ────────────────────────────────────────
+  // 다운로드
+  // ────────────────────────────────────────
   async function downloadFile(storageName, displayName) {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) { showToast('로그인이 필요합니다.'); return; }
+    if (!isTokenValid(getToken())) { logout(); return; }
 
     const params = new URLSearchParams({ path: storageName, name: displayName });
     let resp;
     try {
       resp = await fetch(`/api/download?${params}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` }
+        headers: { Authorization: `Bearer ${getToken()}` }
       });
-    } catch (_e) {
+    } catch {
       showToast('다운로드 실패: 네트워크 오류');
       return;
     }
 
     if (!resp.ok) {
       let msg = '다운로드 실패';
-      try { const j = await resp.json(); msg = j.error || msg; } catch (_) {}
+      try { msg = (await resp.json()).error || msg; } catch {}
       showToast(msg);
       return;
     }
@@ -670,16 +698,16 @@
     const blob = await resp.blob();
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href     = url;
-    a.download = displayName;
+    a.href = url; a.download = displayName;
     a.click();
     URL.revokeObjectURL(url);
   }
 
+  // ────────────────────────────────────────
   // 드래그 앤 드롭
+  // ────────────────────────────────────────
   dropZone.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', e => uploadFiles(Array.from(e.target.files)));
-
   dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
   dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
   dropZone.addEventListener('drop', e => {
@@ -687,16 +715,18 @@
     dropZone.classList.remove('drag-over');
     uploadFiles(Array.from(e.dataTransfer.files));
   });
-  //
-  // 파일 업로드 (순차 처리 + 진행 표시 + 결과 목록)
+
+  // ────────────────────────────────────────
+  // 업로드 (서명 URL 방식)
+  // ────────────────────────────────────────
   async function uploadFiles(files) {
     if (!files.length) return;
     if (!uploadAllowed) { showToast('이 IP에서는 업로드가 허용되지 않습니다.'); return; }
 
-    const resultEl      = document.getElementById('upload-result');
-    const labelEl       = document.getElementById('progress-label');
-    const total         = files.length;
-    const uploadedPaths = [];
+    const resultEl = document.getElementById('upload-result');
+    const labelEl  = document.getElementById('progress-label');
+    const total    = files.length;
+    const uploaded = [];
 
     resultEl.innerHTML         = '';
     progressWrap.style.display = 'block';
@@ -707,38 +737,42 @@
       const file     = files[i];
       const safeName = toSafeStorageName(file.name);
       const path     = `${Date.now()}_${safeName}`;
-
       labelEl.textContent = `업로드 중… ${i + 1} / ${total}`;
 
-      const { error } = await sb.storage.from(BUCKET).upload(path, file, {
-        cacheControl: '3600',
-        upsert: false,
-        metadata: { originalName: file.name }
-      });
-
       const row = document.createElement('div');
-      if (error) {
-        row.className = 'upload-result-item err';
-        row.innerHTML = `<span class="ri">✕</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span><span style="margin-left:auto;font-size:11px;opacity:.7">${escapeHtml(error.message)}</span>`;
-      } else {
-        // 원본 파일명을 DB에 저장 (새로고침 후에도 한글명 유지)
-        localNameCache.set(path, file.name);
-        const { error: metaError } = await sb.from('file_metadata').insert({ path, original_name: file.name });
-        uploadedPaths.push(path);
-        row.className = 'upload-result-item ok';
-        if (metaError) {
-          row.innerHTML = `<span class="ri">⚠</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span><span style="margin-left:auto;font-size:11px;opacity:.7">파일명 저장 실패</span>`;
-          showToast('파일명 DB 저장 실패: ' + metaError.message);
-        } else {
-          row.innerHTML = `<span class="ri">✓</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>`;
-        }
-      }
-      resultEl.appendChild(row);
+      try {
+        // 1. 서명 URL 획득
+        const urlResp = await callApi('/api/upload-url', 'POST', { path });
+        if (!urlResp.ok) throw new Error((await urlResp.json()).error || '서명 URL 오류');
+        const { uploadUrl } = await urlResp.json();
 
+        // 2. Supabase에 직접 업로드
+        const upResp = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type || 'application/octet-stream' },
+          body: file
+        });
+        if (!upResp.ok) throw new Error('파일 업로드 실패');
+
+        // 3. 원본 파일명 저장
+        localNameCache.set(path, file.name);
+        const metaResp = await callApi('/api/metadata', 'POST', { path, original_name: file.name });
+        uploaded.push(path);
+
+        row.className = 'upload-result-item ok';
+        row.innerHTML = metaResp.ok
+          ? `<span class="ri">✓</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>`
+          : `<span class="ri">⚠</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span><span style="margin-left:auto;font-size:11px;opacity:.7">파일명 저장 실패</span>`;
+      } catch (e) {
+        row.className = 'upload-result-item err';
+        row.innerHTML = `<span class="ri">✕</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span><span style="margin-left:auto;font-size:11px;opacity:.7">${escapeHtml(e.message)}</span>`;
+      }
+
+      resultEl.appendChild(row);
       progressBar.style.width = `${Math.round((i + 1) / total * 100)}%`;
     }
 
-    labelEl.textContent = `${uploadedPaths.length} / ${total}개 완료`;
+    labelEl.textContent = `${uploaded.length} / ${total}개 완료`;
     setTimeout(() => {
       progressWrap.style.display = 'none';
       labelEl.style.display      = 'none';
@@ -746,54 +780,48 @@
     }, 1200);
 
     fileInput.value = '';
-    await loadFiles(uploadedPaths);
-
-    if (uploadedPaths.length > 0) {
-      fileListEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
+    await loadFiles(uploaded);
+    if (uploaded.length > 0) fileListEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  // 파일은 업로드 시점 기준으로 약 10분 뒤 자동 삭제
-  function startTimer() {
-    clearInterval(timerInterval);
-  }
-
-  // 파일별 삭제 카운트다운 (매초 갱신)
+  // ────────────────────────────────────────
+  // 파일별 삭제 카운트다운
+  // ────────────────────────────────────────
   function startFileCountdowns() {
     clearInterval(countdownInterval);
     countdownInterval = setInterval(() => {
       document.querySelectorAll('.file-expires').forEach(el => {
-        const expiresAt = parseInt(el.dataset.expires);
-        if (!expiresAt) return;
-        const remaining = expiresAt - Date.now();
-        if (remaining <= 0) {
+        const exp = parseInt(el.dataset.expires);
+        if (!exp) return;
+        const rem = exp - Date.now();
+        if (rem <= 0) {
           el.textContent = '삭제 대기중';
-          el.className = 'file-expires urgent';
+          el.className   = 'file-expires urgent';
           return;
         }
-        const m = String(Math.floor(remaining / 60000)).padStart(2, '0');
-        const s = String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0');
+        const m = String(Math.floor(rem / 60000)).padStart(2, '0');
+        const s = String(Math.floor((rem % 60000) / 1000)).padStart(2, '0');
         el.textContent = `${m}:${s} 후 삭제`;
         el.className = 'file-expires' +
-          (remaining < 60000  ? ' urgent' :
-           remaining < 180000 ? ' warn'   : '');
+          (rem < 60000 ? ' urgent' : rem < 180000 ? ' warn' : '');
       });
     }, 1000);
   }
 
+  // ────────────────────────────────────────
   // 유틸
+  // ────────────────────────────────────────
   function formatSize(bytes) {
-    if (bytes < 1024)           return bytes + ' B';
-    if (bytes < 1024 * 1024)    return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024)        return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / 1024 / 1024).toFixed(1) + ' MB';
   }
 
   function escapeHtml(str) {
-    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
   function toSafeStorageName(name) {
-    // S3 키는 ASCII 안전 문자만 허용 — 비ASCII(한글 포함) 및 공백·예약문자를 _ 치환
     const dotIdx = name.lastIndexOf('.');
     const hasExt = dotIdx > 0 && dotIdx < name.length - 1;
     const base   = hasExt ? name.slice(0, dotIdx) : name;
@@ -812,7 +840,15 @@
     toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
   }
 
-  initApp();
+  // ────────────────────────────────────────
+  // 초기화
+  // ────────────────────────────────────────
+  if (isTokenValid(getToken())) {
+    showMain();
+  } else {
+    clearToken();
+    showLogin();
+  }
 </script>
 </body>
 </html>
