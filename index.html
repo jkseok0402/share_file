@@ -408,7 +408,8 @@
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const path = `${Date.now()}_${file.name}`;
+      const safeName = toSafeStorageName(file.name);
+      const path = `${Date.now()}_${safeName}`;
 
       const { error } = await sb.storage.from(BUCKET).upload(path, file, {
         cacheControl: '3600',
@@ -457,6 +458,23 @@
 
   function escapeHtml(str) {
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function toSafeStorageName(name) {
+    const idx = name.lastIndexOf('.');
+    const hasExt = idx > 0 && idx < name.length - 1;
+    const base = hasExt ? name.slice(0, idx) : name;
+    const ext = hasExt ? name.slice(idx + 1) : '';
+
+    const cleanedBase = base
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    const fallbackBase = cleanedBase || 'file';
+    const cleanedExt = ext.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    return cleanedExt ? `${fallbackBase}.${cleanedExt}` : fallbackBase;
   }
 
   let toastTimer = null;
