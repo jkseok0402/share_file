@@ -157,7 +157,7 @@ share-file/
 <div class="container" id="app">
   <div id="login-view">
     <h1>Share File</h1>
-    <p style="font-size:14px;color:#666;margin-bottom:24px;">파일을 안전하게 공유하세요. 10분마다 자동 삭제됩니다.</p>
+    <p style="font-size:14px;color:#666;margin-bottom:24px;">파일을 안전하게 공유하세요. 업로드된 파일은은 10분 이후 자동 삭제됩니다. (최대 20분 이내)</p>
     <button class="btn btn-google" id="login-btn">
       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFF" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></svg>
       Google로 로그인
