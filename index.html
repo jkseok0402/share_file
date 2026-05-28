@@ -388,7 +388,7 @@
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
         <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
       </svg>
-      <span>업로드된 파일은 10분 이후 자동 삭제됩니다. (최대 20분)</span>
+      <span>업로드된 파일은 1분 이후 자동 삭제됩니다. (최대 2분)</span>
     </div>
 
     <div class="upload-area" id="drop-zone">
@@ -652,7 +652,7 @@
       const sizeStr     = file.metadata?.size != null ? formatSize(file.metadata.size) : '';
       const displayName = nameMap.get(file.name) || localNameCache.get(file.name) || file.name.replace(/^\d+_/, '');
       const expiresAt   = file.created_at
-        ? new Date(file.created_at).getTime() + 10 * 60 * 1000
+        ? new Date(file.created_at).getTime() + 1 * 60 * 1000
         : null;
 
       item.innerHTML = `

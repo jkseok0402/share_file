@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const BUCKET = 'share_file'
-const DELETE_AFTER_MS = 10 * 60 * 1000
+const DELETE_AFTER_MS = 1 * 60 * 1000
 
 Deno.serve(async (req: Request) => {
   const cronSecret = Deno.env.get('CRON_SECRET')
