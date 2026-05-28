@@ -6,11 +6,18 @@
   <title>Share File</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
+    @font-face {
+      font-family: 'Paperlogy';
+      src: url('Paperlogy-6SemiBold.ttf') format('truetype');
+      font-weight: 600;
+      font-style: normal;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #f5f5f5;
+      font-family: 'Paperlogy', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f2f5;
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -19,19 +26,26 @@
 
     .container {
       background: white;
-      border-radius: 12px;
-      padding: 32px;
+      border-radius: 20px;
+      padding: 36px;
       width: 520px;
-      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
     }
 
-    h1 { font-size: 20px; font-weight: 600; color: #111; }
+    h1 {
+      font-family: 'Paperlogy', sans-serif;
+      font-size: 22px;
+      font-weight: 600;
+      color: #111;
+      letter-spacing: -0.4px;
+    }
 
     .subtitle {
       font-size: 13px;
-      color: #888;
-      margin-top: 6px;
+      color: #999;
+      margin-top: 8px;
       margin-bottom: 28px;
+      line-height: 1.6;
     }
 
     /* 버튼 공통 */
@@ -40,31 +54,44 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 10px 20px;
-      border-radius: 8px;
+      padding: 11px 20px;
+      border-radius: 10px;
       border: none;
+      font-family: 'Paperlogy', sans-serif;
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 600;
       cursor: pointer;
-      transition: opacity 0.15s;
+      transition: all 0.15s;
     }
-    .btn:hover { opacity: 0.82; }
-    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
     .btn-primary { background: #111; color: white; width: 100%; }
-    .btn-logout { background: #f0f0f0; color: #444; font-size: 13px; padding: 6px 14px; }
+    .btn-logout {
+      background: #f4f4f4;
+      color: #555;
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 8px;
+    }
+
     .login-form { display: flex; flex-direction: column; gap: 10px; }
     .input {
       width: 100%;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 10px 12px;
+      border: 1.5px solid #e8e8e8;
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-family: 'Paperlogy', sans-serif;
       font-size: 14px;
       outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      color: #222;
     }
+    .input::placeholder { color: #bbb; }
     .input:focus {
       border-color: #111;
-      box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.08);
+      box-shadow: 0 0 0 3px rgba(17,17,17,0.07);
     }
 
     /* 헤더 */
@@ -75,41 +102,59 @@
       margin-bottom: 16px;
     }
 
-    .user-email { font-size: 13px; color: #666; }
+    .user-email {
+      font-size: 12px;
+      color: #999;
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
     /* 타이머 */
     .timer {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       font-size: 12px;
-      color: #b45309;
+      color: #92400e;
       background: #fffbeb;
       border: 1px solid #fde68a;
-      padding: 7px 12px;
-      border-radius: 6px;
-      margin-bottom: 16px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-bottom: 14px;
     }
 
     /* 업로드 영역 */
     .upload-area {
-      border: 2px dashed #ddd;
-      border-radius: 8px;
-      padding: 28px 16px;
+      border: 2px dashed #e0e0e0;
+      border-radius: 14px;
+      padding: 32px 16px;
       text-align: center;
-      color: #aaa;
+      color: #bbb;
       font-size: 14px;
       cursor: pointer;
-      transition: border-color 0.15s, color 0.15s;
-      margin-bottom: 16px;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      margin-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
     }
+    .upload-area .upload-icon { color: #ccc; transition: color 0.15s; }
     .upload-area:hover,
     .upload-area.drag-over {
-      border-color: #4285F4;
-      color: #4285F4;
+      border-color: #4f8ef7;
+      color: #4f8ef7;
+      background: #f5f8ff;
     }
+    .upload-area:hover .upload-icon,
+    .upload-area.drag-over .upload-icon { color: #4f8ef7; }
 
     /* 업로드 진행 */
     .progress-bar-wrap {
       background: #f0f0f0;
-      border-radius: 4px;
+      border-radius: 99px;
       height: 4px;
       margin-bottom: 8px;
       overflow: hidden;
@@ -117,14 +162,15 @@
     }
     .progress-bar {
       height: 100%;
-      background: #4285F4;
+      background: linear-gradient(90deg, #4f8ef7, #6fa8ff);
       width: 0%;
       transition: width 0.2s;
+      border-radius: 99px;
     }
     .progress-label {
       font-size: 12px;
-      color: #888;
-      margin-bottom: 12px;
+      color: #999;
+      margin-bottom: 10px;
       display: none;
     }
 
@@ -133,79 +179,130 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
     .upload-result-item {
       display: flex;
       align-items: center;
       gap: 8px;
       font-size: 13px;
-      padding: 6px 10px;
-      border-radius: 6px;
+      padding: 7px 12px;
+      border-radius: 8px;
     }
     .upload-result-item.ok  { background: #f0fdf4; color: #166534; }
     .upload-result-item.err { background: #fef2f2; color: #991b1b; }
-    .upload-result-item .ri { font-size: 15px; flex-shrink: 0; }
+    .upload-result-item .ri { font-size: 14px; flex-shrink: 0; }
     .upload-result-item .rn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* 파일 목록 */
-    .file-list { display: flex; flex-direction: column; gap: 8px; }
-    .file-item.new-item { animation: highlight 1.6s ease-out forwards; }
+    .file-list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .file-list-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #aaa;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .file-count-badge {
+      font-size: 11px;
+      color: #888;
+      background: #f4f4f4;
+      padding: 2px 8px;
+      border-radius: 99px;
+    }
+
+    .file-list { display: flex; flex-direction: column; gap: 6px; }
+    .file-item.new-item { animation: highlight 1.8s ease-out forwards; }
     @keyframes highlight {
       0%   { background: #dbeafe; }
-      100% { background: #f9f9f9; }
+      100% { background: #f7f7f7; }
     }
 
     .file-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 14px;
-      background: #f9f9f9;
-      border-radius: 8px;
+      padding: 11px 14px;
+      background: #f7f7f7;
+      border-radius: 10px;
       gap: 8px;
+      transition: background 0.12s;
     }
+    .file-item:hover { background: #f0f0f0; }
 
-    .file-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .file-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
     .file-name {
       font-size: 14px;
       color: #222;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 340px;
+      max-width: 260px;
     }
-    .file-size { font-size: 11px; color: #aaa; }
+    .file-size { font-size: 11px; color: #bbb; }
+
+    .file-expires {
+      flex-shrink: 0;
+      font-size: 11px;
+      color: #bbb;
+      text-align: right;
+      min-width: 64px;
+      transition: color 0.3s;
+    }
+    .file-expires.warn  { color: #f59e0b; }
+    .file-expires.urgent { color: #ef4444; font-weight: 600; }
 
     .btn-download {
       flex-shrink: 0;
-      background: none;
-      border: 1px solid #ddd;
-      color: #444;
-      padding: 5px 12px;
+      background: white;
+      border: 1.5px solid #e8e8e8;
+      color: #555;
+      padding: 5px 13px;
+      font-family: 'Paperlogy', sans-serif;
       font-size: 12px;
-      border-radius: 6px;
+      font-weight: 600;
+      border-radius: 7px;
       cursor: pointer;
-      transition: background 0.12s;
+      transition: all 0.12s;
     }
-    .btn-download:hover { background: #f0f0f0; }
+    .btn-download:hover {
+      border-color: #111;
+      color: #111;
+      background: white;
+    }
 
-    .empty { text-align: center; color: #ccc; font-size: 14px; padding: 28px 0; }
+    .empty {
+      text-align: center;
+      color: #ddd;
+      font-size: 14px;
+      padding: 32px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
 
     .toast {
       position: fixed;
-      bottom: 24px;
+      bottom: 28px;
       left: 50%;
       transform: translateX(-50%);
       background: #222;
       color: white;
+      font-family: 'Paperlogy', sans-serif;
       font-size: 13px;
       padding: 10px 20px;
-      border-radius: 8px;
+      border-radius: 10px;
       opacity: 0;
       transition: opacity 0.2s;
       pointer-events: none;
       white-space: nowrap;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
     }
     .toast.show { opacity: 1; }
   </style>
@@ -222,7 +319,7 @@
       <input class="input" id="password-input" type="password" placeholder="비밀번호" autocomplete="current-password" required>
       <button class="btn btn-primary" id="login-btn" type="submit">로그인</button>
     </form>
-    <div id="access-denied" style="display:none;margin-top:16px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:13px;color:#b91c1c;">
+    <div id="access-denied" style="display:none;margin-top:16px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;font-size:13px;color:#b91c1c;">
       접근 권한이 없습니다. 관리자에게 이메일 등록을 요청하세요.
     </div>
   </div>
@@ -231,16 +328,26 @@
   <div id="main-view" style="display:none;">
     <div class="header">
       <h1>Share File</h1>
-      <div style="display:flex;align-items:center;gap:10px;">
+      <div style="display:flex;align-items:center;gap:8px;">
         <span class="user-email" id="user-email"></span>
         <button class="btn btn-logout" id="logout-btn">로그아웃</button>
       </div>
     </div>
 
-    <div class="timer" id="timer-display">다음 삭제까지: --:--</div>
+    <div class="timer" id="timer-display">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+      </svg>
+      <span>업로드 후 10분 내 자동 삭제됩니다</span>
+    </div>
 
     <div class="upload-area" id="drop-zone">
-      파일을 여기에 끌어다 놓거나 클릭하여 업로드
+      <svg class="upload-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      <span>파일을 여기에 끌어다 놓거나 클릭하여 업로드</span>
       <input type="file" id="file-input" style="display:none" multiple>
     </div>
 
@@ -251,6 +358,10 @@
 
     <div class="upload-result" id="upload-result"></div>
 
+    <div class="file-list-header" id="file-list-header" style="display:none;">
+      <span class="file-list-title">파일 목록</span>
+      <span class="file-count-badge" id="file-count"></span>
+    </div>
     <div class="file-list" id="file-list"></div>
   </div>
 </div>
@@ -279,7 +390,8 @@
   const progressWrap = document.getElementById('progress-wrap');
   const progressBar  = document.getElementById('progress-bar');
 
-  let timerInterval = null;
+  let timerInterval    = null;
+  let countdownInterval = null;
 
   async function loadRuntimeConfig() {
     try {
@@ -343,6 +455,7 @@
 
   function showLogin() {
     clearInterval(timerInterval);
+    clearInterval(countdownInterval);
     loginView.style.display = 'block';
     mainView.style.display  = 'none';
   }
@@ -357,11 +470,12 @@
 
   // 파일 목록 로드
   // newPaths: 방금 업로드된 스토리지 경로 배열 (하이라이트용)
-  // nameMap : Map<storagePath, 원본 파일명> — 방금 올린 파일의 원본명 복원용
-  async function loadFiles(newPaths = [], nameMap = new Map()) {
-    const { data, error } = await sb.storage
-      .from(BUCKET)
-      .list('', { sortBy: { column: 'created_at', order: 'desc' } });
+  async function loadFiles(newPaths = []) {
+    // 스토리지 파일 목록 + DB 원본명 매핑을 병렬 조회
+    const [{ data, error }, { data: metaRows }] = await Promise.all([
+      sb.storage.from(BUCKET).list('', { sortBy: { column: 'created_at', order: 'desc' } }),
+      sb.from('file_metadata').select('path, original_name')
+    ]);
 
     fileListEl.innerHTML = '';
 
@@ -370,12 +484,28 @@
       return;
     }
 
-    const files = (data || []).filter(f => f.name !== '.emptyFolderPlaceholder');
+    // path → 원본 파일명 맵
+    const nameMap = new Map((metaRows || []).map(r => [r.path, r.original_name]));
+    const files   = (data || []).filter(f => f.name !== '.emptyFolderPlaceholder');
+
+    const headerEl = document.getElementById('file-list-header');
+    const countEl  = document.getElementById('file-count');
 
     if (files.length === 0) {
-      fileListEl.innerHTML = '<div class="empty">업로드된 파일이 없습니다</div>';
+      headerEl.style.display = 'none';
+      fileListEl.innerHTML = `
+        <div class="empty">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ddd" stroke-width="1.3">
+            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+            <polyline points="13 2 13 9 20 9"/>
+          </svg>
+          <span>업로드된 파일이 없습니다</span>
+        </div>`;
       return;
     }
+
+    headerEl.style.display = 'flex';
+    countEl.textContent = `${files.length}개`;
 
     const newSet = new Set(newPaths);
 
@@ -383,21 +513,26 @@
       const item = document.createElement('div');
       item.className = 'file-item' + (newSet.has(file.name) ? ' new-item' : '');
 
-      const sizeStr = file.metadata?.size != null ? formatSize(file.metadata.size) : '';
-      // 원본명이 맵에 있으면 사용, 없으면 타임스탬프 접두사 제거
+      const sizeStr     = file.metadata?.size != null ? formatSize(file.metadata.size) : '';
       const displayName = nameMap.get(file.name) || file.name.replace(/^\d+_/, '');
+      const expiresAt   = file.created_at
+        ? new Date(file.created_at).getTime() + 10 * 60 * 1000
+        : null;
 
       item.innerHTML = `
         <div class="file-meta">
           <span class="file-name" title="${escapeHtml(displayName)}">${escapeHtml(displayName)}</span>
           <span class="file-size">${sizeStr}</span>
         </div>
+        <span class="file-expires" data-expires="${expiresAt ?? ''}">--:--</span>
         <button class="btn-download">다운로드</button>
       `;
 
       item.querySelector('.btn-download').addEventListener('click', () => downloadFile(file.name, displayName));
       fileListEl.appendChild(item);
     });
+
+    startFileCountdowns();
   }
 
   // 파일 다운로드 (displayName: 타임스탬프 없는 원본 이름)
@@ -432,7 +567,6 @@
     const labelEl       = document.getElementById('progress-label');
     const total         = files.length;
     const uploadedPaths = [];
-    const nameMap       = new Map(); // storagePath → 원본 파일명
 
     resultEl.innerHTML         = '';
     progressWrap.style.display = 'block';
@@ -448,16 +582,18 @@
 
       const { error } = await sb.storage.from(BUCKET).upload(path, file, {
         cacheControl: '3600',
-        upsert: false
+        upsert: false,
+        metadata: { originalName: file.name }
       });
 
       const row = document.createElement('div');
       if (error) {
         row.className = 'upload-result-item err';
-        row.innerHTML = `<span class="ri">✕</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span><span style="margin-left:auto;font-size:11px;opacity:.7">${error.message}</span>`;
+        row.innerHTML = `<span class="ri">✕</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span><span style="margin-left:auto;font-size:11px;opacity:.7">${escapeHtml(error.message)}</span>`;
       } else {
+        // 원본 파일명을 DB에 저장 (새로고침 후에도 한글명 유지)
+        await sb.from('file_metadata').insert({ path, original_name: file.name });
         uploadedPaths.push(path);
-        nameMap.set(path, file.name); // 원본명 보존
         row.className = 'upload-result-item ok';
         row.innerHTML = `<span class="ri">✓</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>`;
       }
@@ -474,7 +610,7 @@
     }, 1200);
 
     fileInput.value = '';
-    await loadFiles(uploadedPaths, nameMap);
+    await loadFiles(uploadedPaths);
 
     if (uploadedPaths.length > 0) {
       fileListEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -484,7 +620,29 @@
   // 파일은 업로드 시점 기준으로 약 10분 뒤 자동 삭제
   function startTimer() {
     clearInterval(timerInterval);
-    timerEl.textContent = '업로드 후 약 10분 내 자동 삭제됩니다.';
+  }
+
+  // 파일별 삭제 카운트다운 (매초 갱신)
+  function startFileCountdowns() {
+    clearInterval(countdownInterval);
+    countdownInterval = setInterval(() => {
+      document.querySelectorAll('.file-expires').forEach(el => {
+        const expiresAt = parseInt(el.dataset.expires);
+        if (!expiresAt) return;
+        const remaining = expiresAt - Date.now();
+        if (remaining <= 0) {
+          el.textContent = '삭제 대기중';
+          el.className = 'file-expires urgent';
+          return;
+        }
+        const m = String(Math.floor(remaining / 60000)).padStart(2, '0');
+        const s = String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0');
+        el.textContent = `${m}:${s} 후 삭제`;
+        el.className = 'file-expires' +
+          (remaining < 60000  ? ' urgent' :
+           remaining < 180000 ? ' warn'   : '');
+      });
+    }, 1000);
   }
 
   // 유틸

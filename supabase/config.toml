@@ -1,6 +1,5 @@
 [project]
-# 배포 시 supabase link --project-ref YOUR_PROJECT_REF 로 연결됩니다.
-# 이 파일을 직접 수정하지 않아도 됩니다.
+# supabase link --project-ref YOUR_PROJECT_REF 로 연결됩니다.
 
 [functions.delete-files]
 verify_jwt = false
