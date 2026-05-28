@@ -227,6 +227,8 @@
   // =============================================
   // 설정: Supabase 프로젝트 정보를 입력하세요
   // =============================================
+  const FALLBACK_SUPABASE_URL = 'https://vixxkcxympkvaorvsjtx.supabase.co';
+  const FALLBACK_SUPABASE_ANON_KEY = 'sb_publishable_QKhLfWgccjCteKJNTChPJQ_R2AD6uef';
   const BUCKET = 'share_file';
   // =============================================
 
@@ -244,7 +246,6 @@
   const progressBar  = document.getElementById('progress-bar');
 
   let timerInterval = null;
-  let isAuthChecking = false;
 
   async function loadRuntimeConfig() {
     try {
@@ -256,25 +257,22 @@
       }
       return cfg;
     } catch (_e) {
-      return null;
+      return {
+        supabaseUrl: FALLBACK_SUPABASE_URL,
+        supabaseAnonKey: FALLBACK_SUPABASE_ANON_KEY
+      };
     }
   }
 
   async function initApp() {
     const cfg = await loadRuntimeConfig();
-    if (!cfg) {
-      showToast('환경변수가 설정되지 않았습니다. Vercel 환경변수를 확인하세요.');
-      document.getElementById('login-btn').disabled = true;
-      return;
-    }
-
     sb = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
 
     // 인증 상태 감지
     sb.auth.onAuthStateChange(async (_event, session) => {
-      if (isAuthChecking) return;
       if (session) {
-        await checkAuthUser(session.user);
+        document.getElementById('access-denied').style.display = 'none';
+        showMain(session.user);
       } else {
         showLogin();
       }
@@ -293,13 +291,6 @@
         showToast('로그인 오류: ' + error.message);
         return;
       }
-
-      const { data: userData, error: userError } = await sb.auth.getUser();
-      if (userError || !userData.user) {
-        showToast('사용자 정보를 확인할 수 없습니다.');
-        return;
-      }
-      await checkAuthUser(userData.user);
     });
 
     // 로그아웃
@@ -309,30 +300,11 @@
 
     const { data } = await sb.auth.getSession();
     if (data.session) {
-      await checkAuthUser(data.session.user);
+      document.getElementById('access-denied').style.display = 'none';
+      showMain(data.session.user);
     } else {
       showLogin();
     }
-  }
-
-  // 허용 사용자 체크: auth.users에 존재하는 계정만 입장
-  async function checkAuthUser(user) {
-    isAuthChecking = true;
-    const { data, error } = await sb.rpc('is_allowed_auth_user', {
-      p_user_id: user.id
-    });
-
-    if (error || data !== true) {
-      await sb.auth.signOut();
-      document.getElementById('access-denied').style.display = 'block';
-      showToast(error ? `권한 확인 오류: ${error.message}` : '허용되지 않은 사용자입니다.');
-      isAuthChecking = false;
-      return;
-    }
-
-    document.getElementById('access-denied').style.display = 'none';
-    showMain(user);
-    isAuthChecking = false;
   }
 
   function showLogin() {
