@@ -39,11 +39,41 @@
       letter-spacing: -0.4px;
     }
 
-    .subtitle {
+    /* ── 로그인 화면 ── */
+    #login-view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 16px 0 8px;
+    }
+
+    .login-icon {
+      width: 60px;
+      height: 60px;
+      background: #111;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 22px;
+      box-shadow: 0 16px 32px rgba(0,0,0,0.18), 0 4px 8px rgba(0,0,0,0.08);
+    }
+
+    .login-title {
+      font-family: 'Paperlogy', sans-serif;
+      font-size: 24px;
+      font-weight: 600;
+      color: #111;
+      letter-spacing: -0.5px;
+      margin-bottom: 7px;
+    }
+
+    .login-desc {
       font-size: 13px;
-      color: #999;
-      margin-top: 8px;
-      line-height: 1.6;
+      color: #c0c0c0;
+      margin-bottom: 36px;
+      letter-spacing: 0.1px;
     }
 
     /* ── PIN 입력 ── */
@@ -51,49 +81,71 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin: 28px 0 8px;
     }
 
     .pin-row {
       display: flex;
-      gap: 14px;
+      gap: 12px;
     }
 
     .pin-box {
-      width: 62px;
-      height: 68px;
+      width: 68px;
+      height: 76px;
       border: 2px solid #e8e8e8;
-      border-radius: 14px;
+      border-radius: 20px;
       text-align: center;
-      font-size: 28px;
+      font-size: 26px;
       font-family: monospace;
       outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-      color: #222;
+      background: #f5f5f5;
+      color: #111;
       caret-color: transparent;
-      background: #fafafa;
+      transition: border-color 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+                  box-shadow   0.22s cubic-bezier(0.22, 1, 0.36, 1),
+                  transform    0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  background   0.18s ease;
     }
+
     .pin-box:focus {
       border-color: #111;
-      box-shadow: 0 0 0 3px rgba(17,17,17,0.08);
       background: white;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.06);
+      transform: translateY(-4px) scale(1.05);
     }
-    .pin-box.filled { border-color: #555; background: white; }
-    .pin-box.shake  { animation: pinShake 0.35s ease-out; }
+
+    .pin-box.filled {
+      border-color: #333;
+      background: white;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+      transform: translateY(-2px);
+    }
+
+    .pin-box.shake {
+      animation: pinShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+    }
 
     @keyframes pinShake {
-      0%,100% { transform: translateX(0); }
-      20%     { transform: translateX(-6px); }
-      60%     { transform: translateX(6px); }
-      80%     { transform: translateX(-3px); }
+      0%,100% { transform: translateX(0) translateY(0); }
+      15%     { transform: translateX(-9px); }
+      40%     { transform: translateX(9px); }
+      65%     { transform: translateX(-5px); }
+      85%     { transform: translateX(5px); }
     }
 
     .pin-error {
-      margin-top: 16px;
-      font-size: 13px;
-      color: #b91c1c;
-      min-height: 18px;
-      text-align: center;
+      margin-top: 22px;
+      font-size: 12.5px;
+      color: #ef4444;
+      min-height: 16px;
+      letter-spacing: 0.1px;
+      opacity: 0;
+      transform: translateY(-6px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .pin-error.visible {
+      opacity: 1;
+      transform: translateY(0);
     }
 
     /* ── 버튼 공통 ── */
@@ -334,7 +386,7 @@
         box-shadow: 0 4px 16px rgba(0,0,0,0.07);
       }
 
-      .pin-box { width: 54px; height: 60px; font-size: 24px; }
+      .pin-box { width: 60px; height: 68px; font-size: 22px; border-radius: 16px; }
       .pin-row { gap: 10px; }
 
       .upload-area { padding: 24px 12px; }
@@ -364,8 +416,14 @@
 
   <!-- 로그인 화면 -->
   <div id="login-view">
-    <h1>Share File</h1>
-    <p class="subtitle">4자리 PIN을 입력하세요</p>
+    <div class="login-icon">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+        <rect x="5" y="11" width="14" height="11" rx="2.5" fill="white" opacity="0.95"/>
+        <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h1 class="login-title">Share File</h1>
+    <p class="login-desc">4자리 PIN을 입력하세요</p>
     <div class="pin-area">
       <div class="pin-row">
         <input class="pin-box" type="password" maxlength="1" inputmode="numeric" autocomplete="off">
@@ -534,6 +592,7 @@
 
     const errorEl = document.getElementById('pin-error');
     errorEl.textContent = '';
+    errorEl.classList.remove('visible');
     pinBoxes.forEach(b => b.disabled = true);
 
     try {
@@ -549,11 +608,13 @@
         showMain();
       } else {
         errorEl.textContent = 'PIN이 올바르지 않습니다.';
+        errorEl.classList.add('visible');
         pinBoxes.forEach(b => b.classList.add('shake'));
-        setTimeout(resetPinBoxes, 350);
+        setTimeout(resetPinBoxes, 450);
       }
     } catch {
       errorEl.textContent = '네트워크 오류가 발생했습니다.';
+      errorEl.classList.add('visible');
       pinBoxes.forEach(b => b.disabled = false);
     }
   }
@@ -565,7 +626,9 @@
     clearInterval(countdownInterval);
     loginView.style.display = 'block';
     mainView.style.display  = 'none';
-    document.getElementById('pin-error').textContent = '';
+    const pe = document.getElementById('pin-error');
+    pe.textContent = '';
+    pe.classList.remove('visible');
     setTimeout(resetPinBoxes, 80);
   }
 
