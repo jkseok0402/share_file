@@ -741,28 +741,24 @@
 
       const row = document.createElement('div');
       try {
-        // 1. 서명 URL 획득
-        const urlResp = await callApi('/api/upload-url', 'POST', { path });
-        if (!urlResp.ok) throw new Error((await urlResp.json()).error || '서명 URL 오류');
-        const { uploadUrl } = await urlResp.json();
-
-        // 2. Supabase에 직접 업로드
-        const upResp = await fetch(uploadUrl, {
+        // Vercel API를 통해 업로드 (CORS 없음, service role key로 Supabase에 저장)
+        const params = new URLSearchParams({ path, name: file.name });
+        const resp = await fetch(`/api/upload?${params}`, {
           method: 'PUT',
-          headers: { 'Content-Type': file.type || 'application/octet-stream' },
+          headers: {
+            Authorization: `Bearer ${getToken() ?? ''}`,
+            'Content-Type': file.type || 'application/octet-stream'
+          },
           body: file
         });
-        if (!upResp.ok) throw new Error('파일 업로드 실패');
-
-        // 3. 원본 파일명 저장
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.error || '업로드 실패');
+        }
         localNameCache.set(path, file.name);
-        const metaResp = await callApi('/api/metadata', 'POST', { path, original_name: file.name });
         uploaded.push(path);
-
         row.className = 'upload-result-item ok';
-        row.innerHTML = metaResp.ok
-          ? `<span class="ri">✓</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>`
-          : `<span class="ri">⚠</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span><span style="margin-left:auto;font-size:11px;opacity:.7">파일명 저장 실패</span>`;
+        row.innerHTML = `<span class="ri">✓</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>`;
       } catch (e) {
         row.className = 'upload-result-item err';
         row.innerHTML = `<span class="ri">✕</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span><span style="margin-left:auto;font-size:11px;opacity:.7">${escapeHtml(e.message)}</span>`;
