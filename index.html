@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Share File</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 32px;
+      width: 520px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    }
+
+    h1 { font-size: 20px; font-weight: 600; color: #111; }
+
+    .subtitle {
+      font-size: 13px;
+      color: #888;
+      margin-top: 6px;
+      margin-bottom: 28px;
+    }
+
+    /* 버튼 공통 */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.82; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-primary { background: #111; color: white; width: 100%; }
+    .btn-logout { background: #f0f0f0; color: #444; font-size: 13px; padding: 6px 14px; }
+    .login-form { display: flex; flex-direction: column; gap: 10px; }
+    .input {
+      width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+    }
+    .input:focus {
+      border-color: #111;
+      box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.08);
+    }
+
+    /* 헤더 */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .user-email { font-size: 13px; color: #666; }
+
+    /* 타이머 */
+    .timer {
+      font-size: 12px;
+      color: #b45309;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      padding: 7px 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+    }
+
+    /* 업로드 영역 */
+    .upload-area {
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      padding: 28px 16px;
+      text-align: center;
+      color: #aaa;
+      font-size: 14px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      margin-bottom: 16px;
+    }
+    .upload-area:hover,
+    .upload-area.drag-over {
+      border-color: #4285F4;
+      color: #4285F4;
+    }
+
+    /* 업로드 진행 */
+    .progress-bar-wrap {
+      background: #f0f0f0;
+      border-radius: 4px;
+      height: 4px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      display: none;
+    }
+    .progress-bar {
+      height: 100%;
+      background: #4285F4;
+      width: 0%;
+      transition: width 0.2s;
+    }
+
+    /* 파일 목록 */
+    .file-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      gap: 8px;
+    }
+
+    .file-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .file-name {
+      font-size: 14px;
+      color: #222;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 340px;
+    }
+    .file-size { font-size: 11px; color: #aaa; }
+
+    .btn-download {
+      flex-shrink: 0;
+      background: none;
+      border: 1px solid #ddd;
+      color: #444;
+      padding: 5px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .btn-download:hover { background: #f0f0f0; }
+
+    .empty { text-align: center; color: #ccc; font-size: 14px; padding: 28px 0; }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #222;
+      color: white;
+      font-size: 13px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- 로그인 화면 -->
+  <div id="login-view">
+    <h1>Share File</h1>
+    <p class="subtitle">등록된 계정으로 로그인 후 파일을 공유하세요.<br>업로드된 파일은 10분마다 자동 삭제됩니다.</p>
+    <form id="login-form" class="login-form">
+      <input class="input" id="email-input" type="email" placeholder="이메일" autocomplete="email" required>
+      <input class="input" id="password-input" type="password" placeholder="비밀번호" autocomplete="current-password" required>
+      <button class="btn btn-primary" id="login-btn" type="submit">로그인</button>
+    </form>
+    <div id="access-denied" style="display:none;margin-top:16px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:13px;color:#b91c1c;">
+      접근 권한이 없습니다. 관리자에게 이메일 등록을 요청하세요.
+    </div>
+  </div>
+
+  <!-- 메인 화면 -->
+  <div id="main-view" style="display:none;">
+    <div class="header">
+      <h1>Share File</h1>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="user-email" id="user-email"></span>
+        <button class="btn btn-logout" id="logout-btn">로그아웃</button>
+      </div>
+    </div>
+
+    <div class="timer" id="timer-display">다음 삭제까지: --:--</div>
+
+    <div class="upload-area" id="drop-zone">
+      파일을 여기에 끌어다 놓거나 클릭하여 업로드
+      <input type="file" id="file-input" style="display:none" multiple>
+    </div>
+
+    <div class="progress-bar-wrap" id="progress-wrap">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+
+    <div class="file-list" id="file-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // =============================================
+  // 설정: Supabase 프로젝트 정보를 입력하세요
+  // =============================================
+  const BUCKET = 'share_file';
+  // =============================================
+
+  const { createClient } = supabase;
+  let sb = null;
+
+  const loginView   = document.getElementById('login-view');
+  const mainView    = document.getElementById('main-view');
+  const userEmailEl = document.getElementById('user-email');
+  const fileListEl  = document.getElementById('file-list');
+  const dropZone    = document.getElementById('drop-zone');
+  const fileInput   = document.getElementById('file-input');
+  const timerEl     = document.getElementById('timer-display');
+  const progressWrap = document.getElementById('progress-wrap');
+  const progressBar  = document.getElementById('progress-bar');
+
+  let timerInterval = null;
+
+  async function loadRuntimeConfig() {
+    try {
+      const res = await fetch('/api/config', { cache: 'no-store' });
+      if (!res.ok) throw new Error('환경설정 응답 실패');
+      const cfg = await res.json();
+      if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
+        throw new Error('환경변수 누락');
+      }
+      return cfg;
+    } catch (_e) {
+      return null;
+    }
+  }
+
+  async function initApp() {
+    const cfg = await loadRuntimeConfig();
+    if (!cfg) {
+      showToast('환경변수가 설정되지 않았습니다. Vercel 환경변수를 확인하세요.');
+      document.getElementById('login-btn').disabled = true;
+      return;
+    }
+
+    sb = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+
+    // 인증 상태 감지
+    sb.auth.onAuthStateChange(async (_event, session) => {
+      if (session) {
+        await checkAuthUser(session.user);
+      } else {
+        showLogin();
+      }
+    });
+
+    // 로그인 (이메일/비밀번호)
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email-input').value.trim();
+      const password = document.getElementById('password-input').value;
+      const { error } = await sb.auth.signInWithPassword({
+        email,
+        password
+      });
+      if (error) showToast('로그인 오류: ' + error.message);
+    });
+
+    // 로그아웃
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+      await sb.auth.signOut();
+    });
+
+    const { data } = await sb.auth.getSession();
+    if (data.session) {
+      await checkAuthUser(data.session.user);
+    } else {
+      showLogin();
+    }
+  }
+
+  // 허용 사용자 체크: auth.users에 존재하는 계정만 입장
+  async function checkAuthUser(user) {
+    const { data, error } = await sb.rpc('is_allowed_auth_user', {
+      p_user_id: user.id
+    });
+
+    if (error || data !== true) {
+      await sb.auth.signOut();
+      document.getElementById('access-denied').style.display = 'block';
+      showToast('허용되지 않은 사용자입니다.');
+      return;
+    }
+
+    document.getElementById('access-denied').style.display = 'none';
+    showMain(user);
+  }
+
+  function showLogin() {
+    clearInterval(timerInterval);
+    loginView.style.display = 'block';
+    mainView.style.display  = 'none';
+  }
+
+  function showMain(user) {
+    loginView.style.display = 'none';
+    mainView.style.display  = 'block';
+    userEmailEl.textContent = user.email;
+    loadFiles();
+    startTimer();
+  }
+
+  // 파일 목록 로드
+  async function loadFiles() {
+    const { data, error } = await sb.storage
+      .from(BUCKET)
+      .list('', { sortBy: { column: 'created_at', order: 'desc' } });
+
+    fileListEl.innerHTML = '';
+
+    if (error) {
+      fileListEl.innerHTML = `<div class="empty">목록을 불러오지 못했습니다</div>`;
+      return;
+    }
+
+    const files = (data || []).filter(f => f.name !== '.emptyFolderPlaceholder');
+
+    if (files.length === 0) {
+      fileListEl.innerHTML = '<div class="empty">업로드된 파일이 없습니다</div>';
+      return;
+    }
+
+    files.forEach(file => {
+      const item = document.createElement('div');
+      item.className = 'file-item';
+
+      const sizeStr = file.metadata?.size != null
+        ? formatSize(file.metadata.size)
+        : '';
+
+      item.innerHTML = `
+        <div class="file-meta">
+          <span class="file-name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+          <span class="file-size">${sizeStr}</span>
+        </div>
+        <button class="btn-download">다운로드</button>
+      `;
+
+      item.querySelector('.btn-download').addEventListener('click', () => downloadFile(file.name));
+      fileListEl.appendChild(item);
+    });
+  }
+
+  // 파일 다운로드
+  async function downloadFile(name) {
+    const { data, error } = await sb.storage.from(BUCKET).download(name);
+    if (error) { showToast('다운로드 실패: ' + error.message); return; }
+    const url = URL.createObjectURL(data);
+    const a   = document.createElement('a');
+    a.href     = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // 드래그 앤 드롭
+  dropZone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => uploadFiles(Array.from(e.target.files)));
+
+  dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    uploadFiles(Array.from(e.dataTransfer.files));
+  });
+
+  // 파일 업로드 (순차 처리 + 진행 표시)
+  async function uploadFiles(files) {
+    if (!files.length) return;
+
+    progressWrap.style.display = 'block';
+    progressBar.style.width    = '0%';
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const path = `${Date.now()}_${file.name}`;
+
+      const { error } = await sb.storage.from(BUCKET).upload(path, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+      if (error) {
+        showToast(`업로드 실패 (${file.name}): ${error.message}`);
+      } else {
+        showToast(`업로드 완료: ${file.name}`);
+      }
+
+      progressBar.style.width = `${Math.round((i + 1) / files.length * 100)}%`;
+    }
+
+    setTimeout(() => {
+      progressWrap.style.display = 'none';
+      progressBar.style.width    = '0%';
+    }, 600);
+
+    fileInput.value = '';
+    loadFiles();
+  }
+
+  // 10분 주기 타이머 (현재 시각의 분:초 기준)
+  function startTimer() {
+    clearInterval(timerInterval);
+    function update() {
+      const now = new Date();
+      const totalSeconds = now.getMinutes() * 60 + now.getSeconds();
+      const remaining    = 600 - (totalSeconds % 600);
+      const m = String(Math.floor(remaining / 60)).padStart(2, '0');
+      const s = String(remaining % 60).padStart(2, '0');
+      timerEl.textContent = `다음 삭제까지: ${m}:${s}`;
+    }
+    update();
+    timerInterval = setInterval(update, 1000);
+  }
+
+  // 유틸
+  function formatSize(bytes) {
+    if (bytes < 1024)           return bytes + ' B';
+    if (bytes < 1024 * 1024)    return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  let toastTimer = null;
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  initApp();
+</script>
+</body>
+</html>
