@@ -1,4 +1,5 @@
 import { verifyToken } from './_auth.js';
+import { Readable } from 'stream';
 
 export const config = {
   api: { bodyParser: false }
@@ -19,29 +20,26 @@ export default async function handler(req, res) {
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) return res.status(500).json({ error: '서버 설정 오류' });
 
-  // 요청 바디(파일 바이너리) 수집
-  const chunks = [];
-  await new Promise((resolve, reject) => {
-    req.on('data', c => chunks.push(c));
-    req.on('end', resolve);
-    req.on('error', reject);
-  });
-  const body = Buffer.concat(chunks);
+  const contentType   = req.headers['content-type'] || 'application/octet-stream';
+  const contentLength = req.headers['content-length'];
 
-  const contentType = req.headers['content-type'] || 'application/octet-stream';
+  const uploadHeaders = {
+    Authorization: `Bearer ${serviceKey}`,
+    apikey: serviceKey,
+    'Content-Type': contentType,
+    'x-upsert': 'false'
+  };
+  if (contentLength) uploadHeaders['Content-Length'] = contentLength;
 
-  // Supabase Storage에 업로드 (service role key 사용)
+  // IncomingMessage → Web ReadableStream 변환 후 Supabase로 스트리밍 전달
+  // (전체 버퍼링 없이 브라우저에서 받는 즉시 Supabase로 전달)
   const upResp = await fetch(
     `${supabaseUrl}/storage/v1/object/share_file/${encodeURIComponent(path)}`,
     {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${serviceKey}`,
-        apikey: serviceKey,
-        'Content-Type': contentType,
-        'x-upsert': 'false'
-      },
-      body
+      headers: uploadHeaders,
+      body: Readable.toWeb(req),
+      duplex: 'half'
     }
   );
 
@@ -50,7 +48,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: '파일 저장 실패', detail });
   }
 
-  // 원본 파일명 메타데이터 저장
+  // 원본 파일명 메타데이터 저장 (업로드 성공 후)
   if (name) {
     await fetch(`${supabaseUrl}/rest/v1/file_metadata`, {
       method: 'POST',

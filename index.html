@@ -744,7 +744,8 @@
     let resp;
     try {
       resp = await fetch(`/api/download?${params}`, {
-        headers: { Authorization: `Bearer ${getToken()}` }
+        headers: { Authorization: `Bearer ${getToken()}` },
+        cache: 'no-store'
       });
     } catch {
       showToast('다운로드 실패: 네트워크 오류');
@@ -758,12 +759,14 @@
       return;
     }
 
-    const blob = await resp.blob();
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = displayName;
+    // 서명 URL을 받아 브라우저가 Supabase에서 직접 다운로드
+    const { url } = await resp.json();
+    const a = document.createElement('a');
+    a.href = url;
+    a.style.display = 'none';
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => document.body.removeChild(a), 200);
   }
 
   // ────────────────────────────────────────
@@ -804,21 +807,28 @@
 
       const row = document.createElement('div');
       try {
-        // Vercel API를 통해 업로드 (CORS 없음, service role key로 Supabase에 저장)
-        const params = new URLSearchParams({ path, name: file.name });
-        const resp = await fetch(`/api/upload?${params}`, {
+        // 1단계: 서버에서 Supabase 서명 업로드 URL 발급
+        const urlResp = await callApi('/api/upload-url', 'POST', { path });
+        if (!urlResp.ok) {
+          const e = await urlResp.json().catch(() => ({}));
+          throw new Error(e.error || '서명 URL 발급 실패');
+        }
+        const { uploadUrl } = await urlResp.json();
+
+        // 2단계: 브라우저 → Supabase 직접 업로드 (Vercel 미경유 → 크기 제한 없음)
+        const upResp = await fetch(uploadUrl, {
           method: 'PUT',
-          headers: {
-            Authorization: `Bearer ${getToken() ?? ''}`,
-            'Content-Type': file.type || 'application/octet-stream'
-          },
+          headers: { 'Content-Type': file.type || 'application/octet-stream' },
           body: file
         });
-        if (!resp.ok) {
-          const err = await resp.json().catch(() => ({}));
-          throw new Error(err.error || '업로드 실패');
+        if (!upResp.ok) {
+          const detail = await upResp.text().catch(() => '');
+          throw new Error('Supabase 업로드 실패' + (detail ? `: ${detail}` : ''));
         }
+
+        // 3단계: 원본 파일명 서버에 저장
         localNameCache.set(path, file.name);
+        await callApi('/api/metadata', 'POST', { path, original_name: file.name });
         uploaded.push(path);
         row.className = 'upload-result-item ok';
         row.innerHTML = `<span class="ri">✓</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>`;

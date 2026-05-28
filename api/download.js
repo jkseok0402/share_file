@@ -1,7 +1,7 @@
 import { verifyToken } from './_auth.js';
 
 export default async function handler(req, res) {
-  // IP 허용 목록 검사 (* 이면 제한 없음)
+  // IP 허용 목록 검사
   const rawAllowedIps = process.env.ALLOWED_IPS || '';
   if (rawAllowedIps.trim() !== '*') {
     const allowedIps = rawAllowedIps.split(',').map(ip => ip.trim()).filter(Boolean);
@@ -15,7 +15,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // 세션 토큰 검증
   if (!verifyToken(req.headers['authorization'])) {
     return res.status(401).json({ error: '인증이 필요합니다.' });
   }
@@ -30,29 +29,35 @@ export default async function handler(req, res) {
   if (!path || typeof path !== 'string') {
     return res.status(400).json({ error: 'path 파라미터가 필요합니다.' });
   }
-
-  // 경로 traversal 방지
   if (path.includes('/') || path.includes('..') || path.includes('\\')) {
     return res.status(400).json({ error: '잘못된 경로입니다.' });
   }
 
-  const storageUrl = `${supabaseUrl}/storage/v1/object/${encodeURIComponent('share_file')}/${encodeURIComponent(path)}`;
-  const fileResp   = await fetch(storageUrl, {
-    headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey }
-  });
+  // 다운로드 서명 URL 생성 (120초 유효)
+  const signResp = await fetch(
+    `${supabaseUrl}/storage/v1/object/sign/share_file/${encodeURIComponent(path)}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${serviceKey}`,
+        apikey: serviceKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ expiresIn: 120 })
+    }
+  );
 
-  if (!fileResp.ok) {
-    return res.status(fileResp.status).json({ error: '파일을 찾을 수 없습니다.' });
+  if (!signResp.ok) {
+    return res.status(404).json({ error: '파일을 찾을 수 없습니다.' });
   }
 
-  const contentType = fileResp.headers.get('content-type') || 'application/octet-stream';
+  const { signedURL } = await signResp.json();
+  if (!signedURL) return res.status(404).json({ error: '파일을 찾을 수 없습니다.' });
+
   const displayName = name || path;
-  const encoded     = encodeURIComponent(displayName);
+  // ?download=filename → Supabase가 Content-Disposition: attachment 헤더를 추가
+  const url = `${supabaseUrl}${signedURL}&download=${encodeURIComponent(displayName)}`;
 
-  res.setHeader('Content-Type', contentType);
-  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encoded}`);
   res.setHeader('Cache-Control', 'no-store');
-
-  const buffer = await fileResp.arrayBuffer();
-  res.send(Buffer.from(buffer));
+  return res.status(200).json({ url });
 }
