@@ -5,7 +5,8 @@ export default async function handler(req, res) {
     const allowedIps = rawAllowedIps.split(',').map(ip => ip.trim()).filter(Boolean);
     if (allowedIps.length > 0) {
       const forwarded = req.headers['x-forwarded-for'] || '';
-      const clientIp  = forwarded.split(',')[0].trim() || req.socket?.remoteAddress || '';
+      const rawIp     = forwarded.split(',')[0].trim() || req.socket?.remoteAddress || '';
+      const clientIp  = rawIp.replace(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/, '$1');
       if (!allowedIps.includes(clientIp)) {
         return res.status(403).json({ error: '접근이 허용되지 않은 IP입니다.' });
       }
