@@ -246,7 +246,7 @@
     .progress-bar-wrap {
       background: #f0f0f0;
       border-radius: 99px;
-      height: 4px;
+      height: 6px;
       margin-bottom: 8px;
       overflow: hidden;
       display: none;
@@ -255,14 +255,29 @@
       height: 100%;
       background: linear-gradient(90deg, #4f8ef7, #6fa8ff);
       width: 0%;
-      transition: width 0.2s;
+      transition: width 0.12s linear;
       border-radius: 99px;
     }
     .progress-label {
+      display: none;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
       font-size: 12px;
       color: #999;
       margin-bottom: 10px;
-      display: none;
+    }
+    .progress-label .pl-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+      color: #666;
+    }
+    .progress-label .pl-stats {
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+      color: #888;
     }
 
     /* ── 업로드 결과 ── */
@@ -282,8 +297,16 @@
     }
     .upload-result-item.ok  { background: #f0fdf4; color: #166534; }
     .upload-result-item.err { background: #fef2f2; color: #991b1b; }
+    .upload-result-item.pending { background: #f5f8ff; color: #3b6fd4; }
     .upload-result-item .ri { font-size: 14px; flex-shrink: 0; }
     .upload-result-item .rn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .upload-result-item .rp {
+      margin-left: auto;
+      flex-shrink: 0;
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      opacity: 0.8;
+    }
 
     /* ── 파일 목록 ── */
     .file-list-header {
@@ -490,7 +513,10 @@
     <div class="progress-bar-wrap" id="progress-wrap">
       <div class="progress-bar" id="progress-bar"></div>
     </div>
-    <div class="progress-label" id="progress-label"></div>
+    <div class="progress-label" id="progress-label">
+      <span class="pl-name" id="progress-name"></span>
+      <span class="pl-stats" id="progress-stats"></span>
+    </div>
 
     <div class="upload-result" id="upload-result"></div>
 
@@ -823,29 +849,74 @@
   // ────────────────────────────────────────
   // 업로드 (서명 URL 방식)
   // ────────────────────────────────────────
+  function formatSpeed(bps) {
+    if (!bps || bps < 1) return '';
+    if (bps < 1024) return `${Math.round(bps)} B/s`;
+    if (bps < 1024 * 1024) return `${(bps / 1024).toFixed(1)} KB/s`;
+    return `${(bps / 1024 / 1024).toFixed(1)} MB/s`;
+  }
+
+  function putFileWithProgress(url, file, onProgress) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', url);
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+      xhr.upload.onprogress = (e) => {
+        onProgress(e.loaded, e.lengthComputable ? e.total : file.size);
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error(`Supabase 업로드 실패 (${xhr.status})`));
+      };
+      xhr.onerror = () => reject(new Error('네트워크 오류'));
+      xhr.onabort = () => reject(new Error('업로드가 취소되었습니다'));
+      xhr.send(file);
+    });
+  }
+
   async function uploadFiles(files) {
     if (!files.length) return;
     if (!uploadAllowed) { showToast('이 IP에서는 업로드가 허용되지 않습니다.'); return; }
 
     const resultEl = document.getElementById('upload-result');
     const labelEl  = document.getElementById('progress-label');
+    const nameEl   = document.getElementById('progress-name');
+    const statsEl  = document.getElementById('progress-stats');
     const total    = files.length;
     const uploaded = [];
+    const totalBytes = files.reduce((sum, f) => sum + (f.size || 0), 0);
+    let doneBytes = 0;
 
     resultEl.innerHTML         = '';
     progressWrap.style.display = 'block';
-    labelEl.style.display      = 'block';
+    labelEl.style.display      = 'flex';
     progressBar.style.width    = '0%';
+    dropZone.style.pointerEvents = 'none';
+    dropZone.style.opacity       = '0.55';
+
+    const renderProgress = (file, index, loaded, speed) => {
+      const overall = totalBytes > 0 ? Math.min(doneBytes + loaded, totalBytes) : 0;
+      const pct     = totalBytes > 0 ? Math.min(100, Math.round(overall / totalBytes * 100)) : 0;
+      progressBar.style.width = pct + '%';
+      const countStr = total > 1 ? `${index + 1}/${total} · ` : '';
+      nameEl.textContent  = `${countStr}${file.name}`;
+      const speedStr = speed ? ` · ${formatSpeed(speed)}` : '';
+      statsEl.textContent = `${formatSize(overall)} / ${formatSize(totalBytes)} (${pct}%)${speedStr}`;
+    };
 
     for (let i = 0; i < total; i++) {
       const file     = files[i];
       const safeName = toSafeStorageName(file.name);
       const path     = `${Date.now()}_${safeName}`;
-      labelEl.textContent = `업로드 중… ${i + 1} / ${total}`;
 
       const row = document.createElement('div');
+      row.className = 'upload-result-item pending';
+      row.innerHTML = `<span class="ri">↑</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span><span class="rp">준비 중…</span>`;
+      resultEl.appendChild(row);
+      nameEl.textContent  = (total > 1 ? `${i + 1}/${total} · ` : '') + file.name;
+      statsEl.textContent = '준비 중…';
+
       try {
-        // 1단계: 서버에서 Supabase 서명 업로드 URL 발급
         const urlResp = await callApi('/api/upload-url', 'POST', { path });
         if (!urlResp.ok) {
           const e = await urlResp.json().catch(() => ({}));
@@ -853,37 +924,50 @@
         }
         const { uploadUrl } = await urlResp.json();
 
-        // 2단계: 브라우저 → Supabase 직접 업로드 (Vercel 미경유 → 크기 제한 없음)
-        const upResp = await fetch(uploadUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': file.type || 'application/octet-stream' },
-          body: file
-        });
-        if (!upResp.ok) {
-          const detail = await upResp.text().catch(() => '');
-          throw new Error('Supabase 업로드 실패' + (detail ? `: ${detail}` : ''));
-        }
+        let lastLoaded = 0;
+        let lastTime   = performance.now();
+        let emaSpeed   = 0;
+        row.querySelector('.rp').textContent = '0%';
 
-        // 3단계: 원본 파일명 서버에 저장
+        await putFileWithProgress(uploadUrl, file, (loaded, fileTotal) => {
+          const now = performance.now();
+          const dt  = (now - lastTime) / 1000;
+          if (dt >= 0.12) {
+            const inst = (loaded - lastLoaded) / dt;
+            emaSpeed   = emaSpeed ? emaSpeed * 0.7 + inst * 0.3 : inst;
+            lastLoaded = loaded;
+            lastTime   = now;
+          }
+          const filePct = fileTotal > 0 ? Math.min(100, Math.round(loaded / fileTotal * 100)) : 0;
+          row.querySelector('.rp').textContent = `${filePct}%`;
+          renderProgress(file, i, loaded, emaSpeed);
+        });
+
         localNameCache.set(path, file.name);
         await callApi('/api/metadata', 'POST', { path, original_name: file.name });
         uploaded.push(path);
+        doneBytes += file.size || 0;
+        renderProgress(file, i, 0, 0);
         row.className = 'upload-result-item ok';
         row.innerHTML = `<span class="ri">✓</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>`;
       } catch (e) {
+        doneBytes += file.size || 0;
         row.className = 'upload-result-item err';
-        row.innerHTML = `<span class="ri">✕</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span><span style="margin-left:auto;font-size:11px;opacity:.7">${escapeHtml(e.message)}</span>`;
+        row.innerHTML = `<span class="ri">✕</span><span class="rn" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span><span class="rp">${escapeHtml(e.message)}</span>`;
       }
-
-      resultEl.appendChild(row);
-      progressBar.style.width = `${Math.round((i + 1) / total * 100)}%`;
     }
 
-    labelEl.textContent = `${uploaded.length} / ${total}개 완료`;
+    nameEl.textContent  = `${uploaded.length} / ${total}개 완료`;
+    statsEl.textContent = '';
+
     setTimeout(() => {
       progressWrap.style.display = 'none';
       labelEl.style.display      = 'none';
       progressBar.style.width    = '0%';
+      if (uploadAllowed) {
+        dropZone.style.pointerEvents = '';
+        dropZone.style.opacity       = '';
+      }
     }, 1200);
 
     fileInput.value = '';
