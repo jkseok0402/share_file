@@ -4,15 +4,19 @@ const BUCKET = 'share_file'
 const DELETE_AFTER_MS = 1 * 60 * 1000
 
 Deno.serve(async (req: Request) => {
-  const cronSecret = Deno.env.get('CRON_SECRET')
-  if (!cronSecret || req.headers.get('X-Cron-Secret') !== cronSecret) {
-    return new Response('Forbidden', { status: 403 })
-  }
-
   const sb = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   )
+
+  let cronSecret = Deno.env.get('CRON_SECRET') ?? ''
+  if (!cronSecret) {
+    const { data } = await sb.from('share_file_cron').select('secret').eq('id', 1).maybeSingle()
+    cronSecret = data?.secret ?? ''
+  }
+  if (!cronSecret || req.headers.get('X-Cron-Secret') !== cronSecret) {
+    return new Response('Forbidden', { status: 403 })
+  }
 
   // 버킷 전체 파일 조회
   const { data: files, error: listError } = await sb.storage
